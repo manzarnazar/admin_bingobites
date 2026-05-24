@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\V1\Auth\CustomerAuthController;
 use App\Http\Controllers\Api\V1\Auth\DeliveryManLoginController;
 use App\Http\Controllers\Api\V1\Auth\KitchenLoginController;
+use App\Http\Controllers\Api\V1\Auth\PosLoginController;
 use App\Http\Controllers\Api\V1\Auth\PasswordResetController;
 use App\Http\Controllers\Api\V1\BannerController;
 use App\Http\Controllers\Api\V1\BranchController;
@@ -24,6 +25,7 @@ use App\Http\Controllers\Api\V1\NotificationController;
 use App\Http\Controllers\Api\V1\OfflinePaymentMethodController;
 use App\Http\Controllers\Api\V1\OrderController;
 use App\Http\Controllers\Api\V1\PageController;
+use App\Http\Controllers\Api\V1\PosController;
 use App\Http\Controllers\Api\V1\ProductController;
 use App\Http\Controllers\Api\V1\TableConfigController;
 use App\Http\Controllers\Api\V1\TableController;
@@ -61,6 +63,11 @@ Route::group(['namespace' => 'Api\V1', 'middleware' => 'localization'], function
         Route::group(['prefix' => 'kitchen', 'middleware' => 'app_activate:' . APPS['kitchen_app']['software_id']], function () {
             Route::post('login', [KitchenLoginController::class, 'login']);
             Route::post('logout', [KitchenLoginController::class, 'logout'])->middleware('auth:kitchen_api');
+        });
+
+        Route::group(['prefix' => 'pos'], function () {
+            Route::post('login', [PosLoginController::class, 'login']);
+            Route::post('logout', [PosLoginController::class, 'logout'])->middleware('auth:admin_api');
         });
     });
 
@@ -249,5 +256,26 @@ Route::group(['namespace' => 'Api\V1', 'middleware' => 'localization'], function
 
     Route::post('payment-mobile', [DigitalPaymentController::class, 'payment']);
     Route::post('add-fund-wallet', [DigitalPaymentController::class, 'addFund'])->middleware('auth:api');
+
+    Route::group(['prefix' => 'pos', 'middleware' => ['auth:admin_api', 'pos_module']], function () {
+        Route::get('bootstrap', [PosController::class, 'bootstrap']);
+        Route::get('categories', [PosController::class, 'categories']);
+        Route::get('products', [PosController::class, 'products']);
+        Route::get('products/{id}', [PosController::class, 'productDetails']);
+        Route::get('cart', [PosController::class, 'cart']);
+        Route::post('cart/items', [PosController::class, 'addToCart']);
+        Route::patch('cart/items/{key}', [PosController::class, 'updateCartItem']);
+        Route::delete('cart/items/{key}', [PosController::class, 'removeCartItem']);
+        Route::delete('cart', [PosController::class, 'emptyCart']);
+        Route::patch('cart/tax', [PosController::class, 'updateTax']);
+        Route::patch('cart/discount', [PosController::class, 'updateDiscount']);
+        Route::post('variant-price', [PosController::class, 'variantPrice']);
+        Route::patch('session', [PosController::class, 'updateSession']);
+        Route::get('customers', [PosController::class, 'customers']);
+        Route::get('tables', [PosController::class, 'tables']);
+        Route::get('delivery-info', [PosController::class, 'deliveryInfo']);
+        Route::post('delivery-address', [PosController::class, 'addDeliveryAddress']);
+        Route::post('orders', [PosController::class, 'placeOrder']);
+    });
 
 });

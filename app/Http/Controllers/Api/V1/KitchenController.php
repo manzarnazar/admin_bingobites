@@ -38,7 +38,7 @@ class KitchenController extends Controller
         $chefBranch = $this->chefBranch->where('user_id', auth()->user()->id)->first();
 
         $orders = $this->order->with('table')
-            ->whereIn('order_status', ['confirmed', 'cooking'])
+            ->whereIn('order_status', ['pending', 'confirmed', 'cooking'])
             ->where('branch_id', $chefBranch->branch_id)
             ->latest()
             ->paginate($limit, ['*'], 'page', $offset);
@@ -60,7 +60,7 @@ class KitchenController extends Controller
 
         $orders = $this->order
             ->where('branch_id', $branchId)
-            ->whereIn('order_status', ['confirmed', 'cooking', 'done'])
+            ->whereIn('order_status', ['pending', 'confirmed', 'cooking', 'done'])
             ->when($search != null, function ($query) use ($key) {
                 foreach ($key as $value) {
                     $query->Where('id', 'like', "%{$value}%");
@@ -139,6 +139,7 @@ class KitchenController extends Controller
     public function changeStatus(Request $request): JsonResponse
     {
         $order = $this->order->find($request->order_id);
+        $oldStatus = $order->order_status;
         $order->order_status = $request->order_status;
 
         if ($request->order_status == 'done') {
@@ -161,6 +162,24 @@ class KitchenController extends Controller
                 Toastr::warning(translate('Push notification failed for DeliveryMan!'));
             }
         }
+
+        // Send notification when order is confirmed from pending (no sound)
+        if ($request->order_status == 'confirmed' && $oldStatus == 'pending') {
+            try {
+                $data = [
+                    'title' => translate('Order Confirmed'),
+                    'description' => translate('Order #') . $order->id . translate(' has been confirmed'),
+                    'order_id' => $order->id,
+                    'image' => '',
+                    'order_status' => $order->order_status,
+                    'is_confirmation' => '1',
+                ];
+                Helpers::send_push_notif_to_topic(data: $data, topic: "kitchen-{$order->branch_id}", type: 'general', isNotificationPayloadRemove: true);
+            } catch (\Exception $e) {
+                Toastr::warning(translate('Push notification failed!'));
+            }
+        }
+
         $isUpdate = $order->update();
 
         if ($isUpdate) {

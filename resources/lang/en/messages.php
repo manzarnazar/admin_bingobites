@@ -2985,4 +2985,10 @@
   'Email Already exists' => 'Email Already exists',
   'Invalid credential.' => 'Invalid credential.',
   'cooking done' => 'Cooking done',
+  'referral_customers' => 'Referral customers',
+  'colors' => 'Colors',
+  'You have a new order - (Order Pending).' => 'You have a new order - (Order Pending).',
+  ' has been confirmed' => ' has been confirmed',
+  'Order #' => 'Order #',
+  'Order Confirmed' => 'Order Confirmed',
 );

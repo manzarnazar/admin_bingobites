@@ -65,6 +65,11 @@ return [
             'driver' => 'passport',
             'provider' => 'kitchen',
         ],
+
+        'admin_api' => [
+            'driver' => 'passport',
+            'provider' => 'admins',
+        ],
     ],
 
     /*

@@ -64,7 +64,7 @@
                                 </div>
                                 <div class="text-center">
                                     <img class="upload-img-view" id="viewer"
-                                        src="{{asset('public\assets\admin\img\400x400\img2.jpg')}}" alt="image"/>
+                                        src="{{asset('public\public/assets\admin\img\400x400\img2.jpg')}}" alt="image"/>
                                 </div>
                             </div>
                         </div>
