@@ -216,6 +216,43 @@ class PosController extends Controller
         ]);
     }
 
+    public function storeCustomer(Request $request): JsonResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'f_name' => 'required',
+            'l_name' => 'required',
+            'phone' => 'required',
+            'email' => 'required|email',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => Helpers::error_processor($validator)], 422);
+        }
+
+        if ($this->user->where('phone', $request->phone)->exists()) {
+            return response()->json(['errors' => [['message' => translate('The phone is already taken')]]], 422);
+        }
+
+        if ($this->user->where('email', $request->email)->exists()) {
+            return response()->json(['errors' => [['message' => translate('The email is already taken')]]], 422);
+        }
+
+        $customer = $this->user->create([
+            'f_name' => $request->f_name,
+            'l_name' => $request->l_name,
+            'email' => $request->email,
+            'phone' => $request->phone,
+            'password' => bcrypt('password'),
+        ]);
+
+        return response()->json([
+            'customer' => [
+                'id' => $customer->id,
+                'text' => trim($customer->f_name . ' ' . $customer->l_name . ' (' . $customer->phone . ')'),
+            ],
+        ]);
+    }
+
     public function customers(Request $request): JsonResponse
     {
         $q = $request->query('q', '');

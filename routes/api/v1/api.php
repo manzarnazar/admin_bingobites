@@ -272,6 +272,7 @@ Route::group(['namespace' => 'Api\V1', 'middleware' => 'localization'], function
         Route::post('variant-price', [PosController::class, 'variantPrice']);
         Route::patch('session', [PosController::class, 'updateSession']);
         Route::get('customers', [PosController::class, 'customers']);
+        Route::post('customers', [PosController::class, 'storeCustomer']);
         Route::get('tables', [PosController::class, 'tables']);
         Route::get('delivery-info', [PosController::class, 'deliveryInfo']);
         Route::post('delivery-address', [PosController::class, 'addDeliveryAddress']);
