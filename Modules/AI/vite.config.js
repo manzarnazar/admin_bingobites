@@ -12,8 +12,8 @@ export default defineConfig({
             publicDirectory: '../../public',
             buildDirectory: 'build-ai',
             input: [
-                __dirname + '/resources/assets/sass/app.scss',
-                __dirname + '/resources/assets/js/app.js'
+                __dirname + '/resources/public/assets/sass/app.scss',
+                __dirname + '/resources/public/assets/js/app.js'
             ],
             refresh: true,
         }),
@@ -21,6 +21,6 @@ export default defineConfig({
 });
 
 //export const paths = [
-//    'Modules/$STUDLY_NAME$/resources/assets/sass/app.scss',
-//    'Modules/$STUDLY_NAME$/resources/assets/js/app.js',
+//    'Modules/$STUDLY_NAME$/resources/public/assets/sass/app.scss',
+//    'Modules/$STUDLY_NAME$/resources/public/assets/js/app.js',
 //];

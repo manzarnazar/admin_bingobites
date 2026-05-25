@@ -11286,7 +11286,7 @@
                 "twig/twig": "^1.38|^2.7|^3.0"
             },
             "suggest": {
-                "kriswallsmith/assetic": "The best way to manage assets",
+                "kriswallsmith/assetic": "The best way to manage public/assets",
                 "monolog/monolog": "Log using Monolog",
                 "predis/predis": "Redis storage"
             },

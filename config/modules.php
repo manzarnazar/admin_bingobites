@@ -35,8 +35,8 @@ return [
             'views/master' => 'Resources/views/layouts/master.blade.php',
             'scaffold/config' => 'Config/config.php',
             'composer' => 'composer.json',
-            'assets/js/app' => 'Resources/assets/js/app.js',
-            'assets/sass/app' => 'Resources/assets/sass/app.scss',
+            'public/assets/js/app' => 'Resources/public/assets/js/app.js',
+            'public/assets/sass/app' => 'Resources/public/assets/sass/app.scss',
             'vite' => 'vite.config.js',
             'package' => 'package.json',
         ],
@@ -74,14 +74,14 @@ return [
         'modules' => base_path('Modules'),
         /*
         |--------------------------------------------------------------------------
-        | Modules assets path
+        | Modules public/assets path
         |--------------------------------------------------------------------------
         |
-        | Here you may update the modules assets path.
+        | Here you may update the modules public/assets path.
         |
         */
 
-        'assets' => public_path('modules'),
+        'public/assets' => public_path('modules'),
         /*
         |--------------------------------------------------------------------------
         | The migrations path
@@ -112,7 +112,7 @@ return [
             'filter' => ['path' => 'Http/Middleware', 'generate' => true],
             'request' => ['path' => 'Http/Requests', 'generate' => true],
             'provider' => ['path' => 'Providers', 'generate' => true],
-            'assets' => ['path' => 'Resources/assets', 'generate' => true],
+            'public/assets' => ['path' => 'Resources/public/assets', 'generate' => true],
             'lang' => ['path' => 'Resources/lang', 'generate' => true],
             'views' => ['path' => 'Resources/views', 'generate' => true],
             'test' => ['path' => 'Tests/Unit', 'generate' => true],

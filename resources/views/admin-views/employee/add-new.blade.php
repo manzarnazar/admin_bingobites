@@ -63,7 +63,7 @@
                                 <div class="form-group">
                                     <div class="text-center mb-3">
                                         <img width="180" class="rounded-10 border" id="viewer"
-                                            src="{{asset('public\assets\admin\img\400x400\img2.jpg')}}" alt="image"/>
+                                            src="{{asset('public\public/assets\admin\img\400x400\img2.jpg')}}" alt="image"/>
                                     </div>
                                     <label for="name">{{translate('employee_image')}}</label>
                                     <span class="text-danger">( {{translate('ratio')}} 1:1 )</span>

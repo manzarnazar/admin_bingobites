@@ -20,7 +20,7 @@
             <a href="#" class="d-flex align-items-center gap-1">
                 <span data-bs-toggle="tooltip" data-bs-placement="top" data-bs-custom-class="custom-tooltip"
                       data-bs-title="Follow our documentation">
-                    <img src="{{asset('public/assets/installation')}}/assets/img/svg-icons/info.svg" alt="" class="svg">
+                    <img src="{{asset('public/assets/installation')}}/public/assets/img/svg-icons/info.svg" alt="" class="svg">
                 </span>
             </a>
         </div>
@@ -94,10 +94,10 @@
                                                placeholder="Ex: password">
                                         <div class="togglePassword">
                                             <img
-                                                src="{{asset('public/assets/installation')}}/assets/img/svg-icons/eye.svg"
+                                                src="{{asset('public/assets/installation')}}/public/assets/img/svg-icons/eye.svg"
                                                 alt="" class="svg eye">
                                             <img
-                                                src="{{asset('public/assets/installation')}}/assets/img/svg-icons/eye-off.svg"
+                                                src="{{asset('public/assets/installation')}}/public/assets/img/svg-icons/eye-off.svg"
                                                 alt=""
                                                 class="svg eye-off">
                                         </div>

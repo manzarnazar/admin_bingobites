@@ -15,8 +15,8 @@ export default defineConfig({
             publicDirectory: '../../public',
             buildDirectory: 'build-$LOWER_NAME$',
             input: [
-                __dirname + '/Resources/assets/sass/app.scss',
-                __dirname + '/Resources/assets/js/app.js'
+                __dirname + '/Resources/public/assets/sass/app.scss',
+                __dirname + '/Resources/public/assets/js/app.js'
             ],
             refresh: true,
         }),

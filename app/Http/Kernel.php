@@ -12,6 +12,7 @@ use App\Http\Middleware\BranchMiddleware;
 use App\Http\Middleware\BranchStatusCheck;
 use App\Http\Middleware\InstallationMiddleware;
 use App\Http\Middleware\ModulePermissionMiddleware;
+use App\Http\Middleware\PosModulePermission;
 use App\Http\Middleware\MaintenanceModeMiddleware;
 use Illuminate\Foundation\Http\Kernel as HttpKernel;
 
@@ -80,6 +81,7 @@ class Kernel extends HttpKernel
         'actch' => ActivationCheckMiddleware::class,
         'localization' => \App\Http\Middleware\localization::class,
         'module' => ModulePermissionMiddleware::class,
+        'pos_module' => PosModulePermission::class,
         'app_activate'=>AppActivation::class,
         'is_active' => ApiActiveCustomer::class,
         'deliveryman_is_active' => ApiActiveDeliveryMan::class,
