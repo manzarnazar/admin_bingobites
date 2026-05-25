@@ -101,6 +101,11 @@ class PosController extends Controller
 
         $paginator = $query->paginate($limit, ['*'], 'page', $offset);
         $products = Helpers::product_data_formatting($paginator->items(), true);
+        $products = array_map(function ($item) {
+            $item['image_url'] = $this->productImageUrl($item['image'] ?? null);
+
+            return $item;
+        }, $products);
 
         return response()->json([
             'total_size' => $paginator->total(),
@@ -118,6 +123,7 @@ class PosController extends Controller
         }])->active()->findOrFail($id);
 
         $formatted = Helpers::product_data_formatting($product, false);
+        $formatted['image_url'] = $this->productImageUrl($formatted['image'] ?? $product->image);
         $branchProduct = $this->productByBranch->where(['product_id' => $id, 'branch_id' => $branchId])->first();
 
         $availableStock = null;
@@ -376,6 +382,15 @@ class PosController extends Controller
             'order_id' => $result['order_id'],
             'message' => $result['message'],
         ]);
+    }
+
+    private function productImageUrl(?string $image): string
+    {
+        if (empty($image)) {
+            return asset('public/assets/admin/img/160x160/img2.jpg');
+        }
+
+        return asset('storage/app/public/product/' . $image);
     }
 
     private function computeDistance($originLat, $originLng, $destLat, $destLng): array

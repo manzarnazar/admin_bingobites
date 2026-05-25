@@ -17,6 +17,20 @@ class PosCartService
         return 'pos_state_' . $adminId;
     }
 
+    private function nextCartItemKey(array $cart): int
+    {
+        $numericKeys = [];
+        foreach (array_keys($cart) as $key) {
+            if (is_int($key)) {
+                $numericKeys[] = $key;
+            } elseif (is_numeric($key)) {
+                $numericKeys[] = (int) $key;
+            }
+        }
+
+        return empty($numericKeys) ? 0 : (max($numericKeys) + 1);
+    }
+
     public function defaultState(): array
     {
         return [
@@ -195,7 +209,7 @@ class PosCartService
         ];
 
         $state = $this->getState($adminId);
-        $nextKey = empty($state['cart']) ? 0 : (max(array_keys($state['cart'])) + 1);
+        $nextKey = $this->nextCartItemKey($state['cart']);
         $state['cart'][$nextKey] = $item;
         $this->saveState($adminId, $state);
 
