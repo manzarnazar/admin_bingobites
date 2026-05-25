@@ -353,19 +353,26 @@ class Helpers
 
     public static function send_push_notif_to_topic($data, $topic, $type, $web_push_link = null, $isNotificationPayloadRemove = false)
     {
+        $messageData = [
+            "title" => (string)$data['title'],
+            "body" => (string)$data['description'],
+            "order_id" => (string)$data['order_id'],
+            "order_status" => (string)($data['order_status'] ?? ''),
+            "type" => (string)$type,
+            "image" => (string)$data['image'],
+            "click_action" => $web_push_link ? (string)$web_push_link : '',
+            "is_background_sound_active" => $isNotificationPayloadRemove ? "1" : "0",
+        ];
+        
+        // Add is_confirmation if present
+        if (isset($data['is_confirmation'])) {
+            $messageData["is_confirmation"] = (string)$data['is_confirmation'];
+        }
+        
         $postData = [
             'message' => [
                 "topic" => $topic,
-                "data" => [
-                    "title" => (string)$data['title'],
-                    "body" => (string)$data['description'],
-                    "order_id" => (string)$data['order_id'],
-                    "order_status" => (string)($data['order_status'] ?? ''),
-                    "type" => (string)$type,
-                    "image" => (string)$data['image'],
-                    "click_action" => $web_push_link ? (string)$web_push_link : '',
-                    "is_background_sound_active" => $isNotificationPayloadRemove ? "1" : "0",
-                ],
+                "data" => $messageData,
                 "notification" => [
                     "title" => (string)$data['title'],
                     "body" => (string)$data['description'],

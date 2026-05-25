@@ -45,22 +45,48 @@ class OrderController extends Controller
     ){}
 
     /**
+     * Safely get authenticated user without initializing Passport when no token is present
+     */
+    private function getAuthenticatedUser(Request $request)
+    {
+        try {
+            if ($request->bearerToken()) {
+                return auth('api')->user();
+            }
+        } catch (\Exception $e) {
+            // Passport keys not configured, treat as guest
+        }
+        return null;
+    }
+
+    /**
      * @param Request $request
      * @return JsonResponse
      */
     public function trackOrder(Request $request): JsonResponse
     {
+        // Check if user is authenticated safely without initializing Passport
+        $authenticatedUser = null;
+        try {
+            if ($request->bearerToken()) {
+                $authenticatedUser = auth('api')->user();
+            }
+        } catch (\Exception $e) {
+            // Passport keys not configured, treat as guest
+            $authenticatedUser = null;
+        }
+
         $validator = Validator::make($request->all(), [
             'order_id' => 'required',
-            'guest_id' => auth('api')->user() ? 'nullable' : 'required',
+            'guest_id' => $authenticatedUser ? 'nullable' : 'required',
         ]);
 
         if ($validator->fails()) {
             return response()->json(['errors' => Helpers::error_processor($validator)], 403);
         }
 
-        $userId = (bool)auth('api')->user() ? auth('api')->user()->id : $request['guest_id'];
-        $userType = (bool)auth('api')->user() ? 0 : 1;
+        $userId = $authenticatedUser ? $authenticatedUser->id : $request['guest_id'];
+        $userType = $authenticatedUser ? 0 : 1;
 
         $order = $this->order->where(['id' => $request['order_id'], 'user_id' => $userId, 'is_guest' => $userType])->first();
         if (!isset($order)) {
@@ -80,6 +106,17 @@ class OrderController extends Controller
      */
     public function placeOrder(Request $request): JsonResponse
     {
+        // Check if user is authenticated safely without initializing Passport
+        $authenticatedUser = null;
+        try {
+            if ($request->bearerToken()) {
+                $authenticatedUser = auth('api')->user();
+            }
+        } catch (\Exception $e) {
+            // Passport keys not configured, treat as guest
+            $authenticatedUser = null;
+        }
+
         $validator = Validator::make($request->all(), [
             'payment_method' => 'required',
             'order_type' => 'required',
@@ -87,7 +124,7 @@ class OrderController extends Controller
             'delivery_time' => 'required',
             'delivery_date' => 'required',
             'distance' => 'required',
-            'guest_id' => auth('api')->user() ? 'nullable' : 'required',
+            'guest_id' => $authenticatedUser ? 'nullable' : 'required',
             'is_partial' => 'required|in:0,1',
             'cart' => 'required|array|min:1',
         ]);
@@ -98,11 +135,11 @@ class OrderController extends Controller
 
         Helpers::update_daily_product_stock();
 
-        if(auth('api')->user()){
-            $customer = $this->user->find(auth('api')->user()->id);
+        if($authenticatedUser){
+            $customer = $this->user->find($authenticatedUser->id);
         }
-        $userId = (bool)auth('api')->user() ? auth('api')->user()->id : $request['guest_id'];
-        $userType = (bool)auth('api')->user() ? 0 : 1;
+        $userId = $authenticatedUser ? $authenticatedUser->id : $request['guest_id'];
+        $userType = $authenticatedUser ? 0 : 1;
 
         $deliveryChargeInfo = [
             'branch_id' => $request['branch_id'],
@@ -344,8 +381,9 @@ class OrderController extends Controller
                 $orderArea->save();
             }
 
-            if (auth('api')->check()) {
-                $registeredCustomer = auth('api')->user();
+            $authenticatedUser = $this->getAuthenticatedUser($request);
+            if ($authenticatedUser) {
+                $registeredCustomer = $authenticatedUser;
 
                 if ($registeredCustomer?->referral_customer_details && $registeredCustomer?->referral_customer_details->is_used == 0) {
                     $registeredCustomer?->referral_customer_details->update(['is_used' => 1]);
@@ -413,10 +451,11 @@ class OrderController extends Controller
 
     private function orderEmailAndNotification($request, $or, $order_id)
     {
-        if ((bool)auth('api')->user()){
-            $fcmToken = auth('api')->user()?->cm_firebase_token;
-            $local = auth('api')->user()?->language_code;
-            $customerName = auth('api')->user()?->f_name . ' '. auth('api')->user()?->l_name;
+        $authenticatedUser = $this->getAuthenticatedUser($request);
+        if ($authenticatedUser){
+            $fcmToken = $authenticatedUser->cm_firebase_token ?? null;
+            $local = $authenticatedUser->language_code ?? 'en';
+            $customerName = ($authenticatedUser->f_name ?? '') . ' '. ($authenticatedUser->l_name ?? '');
         }else{
             $guest = GuestUser::find($request['guest_id']);
             $fcmToken = $guest ? $guest->fcm_token : '';
@@ -445,7 +484,7 @@ class OrderController extends Controller
                 $data = [
                     'title' => translate('Order'),
                     'description' => $value,
-                    'order_id' => (bool)auth('api')->user() ? $order_id : null,
+                    'order_id' => $authenticatedUser ? $order_id : null,
                     'image' => '',
                     'type' => 'order_status',
                 ];
@@ -458,8 +497,8 @@ class OrderController extends Controller
         try {
             $emailServices = Helpers::get_business_settings('mail_config');
             $orderMailStatus = Helpers::get_business_settings('place_order_mail_status_user');
-            if (isset($emailServices['status']) && $emailServices['status'] == 1 && $orderMailStatus == 1 && (bool)auth('api')->user()) {
-                Mail::to(auth('api')->user()->email)->send(new \App\Mail\OrderPlaced($order_id));
+            if (isset($emailServices['status']) && $emailServices['status'] == 1 && $orderMailStatus == 1 && $authenticatedUser) {
+                Mail::to($authenticatedUser->email)->send(new \App\Mail\OrderPlaced($order_id));
             }
         }catch (\Exception $e) {
             //
@@ -472,6 +511,26 @@ class OrderController extends Controller
                 'order_id' => $order_id,
                 'image' => '',
                 'order_status' => $or['order_status'],
+                'is_confirmation' => '0',
+            ];
+
+            try {
+                Helpers::send_push_notif_to_topic(data: $data, topic: "kitchen-{$or['branch_id']}", type: 'general', isNotificationPayloadRemove: true);
+
+            } catch (\Exception $e) {
+                //
+            }
+        }
+
+        // Send notification for pending orders (with sound)
+        if ($or['order_status'] == 'pending') {
+            $data = [
+                'title' => translate('You have a new order - (Order Pending).'),
+                'description' => $order_id,
+                'order_id' => $order_id,
+                'image' => '',
+                'order_status' => $or['order_status'],
+                'is_confirmation' => '0',
             ];
 
             try {
@@ -504,8 +563,9 @@ class OrderController extends Controller
      */
     public function getOrderList(Request $request): JsonResponse
     {
-        $userId = (bool)auth('api')->user() ? auth('api')->user()->id : $request['guest_id'];
-        $userType = (bool)auth('api')->user() ? 0 : 1;
+        $authenticatedUser = $this->getAuthenticatedUser($request);
+        $userId = $authenticatedUser ? $authenticatedUser->id : $request['guest_id'];
+        $userType = $authenticatedUser ? 0 : 1;
         $orderFilter = $request->order_filter;
 
         $orders = $this->order->with(['customer', 'delivery_man.rating'])
@@ -570,8 +630,9 @@ class OrderController extends Controller
             return response()->json(['errors' => Helpers::error_processor($validator)], 403);
         }
 
-        $userId = (bool)auth('api')->user() ? auth('api')->user()->id : $request['guest_id'];
-        $userType = (bool)auth('api')->user() ? 0 : 1;
+        $authenticatedUser = $this->getAuthenticatedUser($request);
+        $userId = $authenticatedUser ? $authenticatedUser->id : $request['guest_id'];
+        $userType = $authenticatedUser ? 0 : 1;
 
         $details = $this->order_detail->with(['order',
             'order.delivery_man' => function ($query) {
@@ -613,8 +674,9 @@ class OrderController extends Controller
             return response()->json(['errors' => [['code' => 'order', 'message' => 'Order can only cancel when order status is pending!']]], 403);
         }
 
-        $userId = (bool)auth('api')->user() ? auth('api')->user()->id : $request['guest_id'];
-        $userType = (bool)auth('api')->user() ? 0 : 1;
+        $authenticatedUser = $this->getAuthenticatedUser($request);
+        $userId = $authenticatedUser ? $authenticatedUser->id : $request['guest_id'];
+        $userType = $authenticatedUser ? 0 : 1;
 
         if ($this->order->where(['user_id' => $userId, 'is_guest' => $userType, 'id' => $request['order_id']])->first()) {
             $this->order->where(['user_id' => $userId, 'is_guest' => $userType, 'id' => $request['order_id']])->update([
@@ -635,8 +697,17 @@ class OrderController extends Controller
      */
     public function updatePaymentMethod(Request $request): JsonResponse
     {
-        if ($this->order->where(['user_id' => auth('api')->user()->id, 'id' => $request['order_id']])->first()) {
-            $this->order->where(['user_id' => auth('api')->user()->id, 'id' => $request['order_id']])->update([
+        $authenticatedUser = $this->getAuthenticatedUser($request);
+        if (!$authenticatedUser) {
+            return response()->json([
+                'errors' => [
+                    ['code' => 'auth', 'message' => translate('Authentication required')]
+                ]
+            ], 401);
+        }
+        
+        if ($this->order->where(['user_id' => $authenticatedUser->id, 'id' => $request['order_id']])->first()) {
+            $this->order->where(['user_id' => $authenticatedUser->id, 'id' => $request['order_id']])->update([
                 'payment_method' => $request['payment_method']
             ]);
             return response()->json(['message' => translate('payment_method_updated')], 200);
