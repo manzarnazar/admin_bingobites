@@ -42,7 +42,7 @@ class PosOrderService
             return ['error' => true, 'message' => translate('cart_empty_warning')];
         }
 
-        $orderType = $session['order_type'] ?? 'take_away';
+        $orderType = $requestData['order_type'] ?? $session['order_type'] ?? 'take_away';
 
         if ($orderType == 'dine_in') {
             if (empty($session['table_id'])) {

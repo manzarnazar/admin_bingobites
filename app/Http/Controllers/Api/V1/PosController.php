@@ -403,6 +403,12 @@ class PosController extends Controller
 
     public function placeOrder(Request $request): JsonResponse
     {
+        $sessionData = $request->only([
+            'order_type', 'table_id', 'people_number', 'address', 'customer_id',
+        ]);
+        if ($sessionData !== []) {
+            $this->cartService->updateSession($this->adminId(), $sessionData);
+        }
         $result = $this->orderService->placeOrder($this->adminId(), $request->all());
         if ($result['error'] ?? false) {
             return response()->json(['errors' => [['message' => $result['message']]]], 422);
