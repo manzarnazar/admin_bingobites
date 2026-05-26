@@ -75,6 +75,16 @@ class PosCartService
                 $state['session'][$key] = $data[$key];
             }
         }
+        if (isset($data['order_type'])) {
+            $orderType = $data['order_type'];
+            if (in_array($orderType, ['take_away', 'home_delivery'], true)) {
+                $state['session']['table_id'] = null;
+                $state['session']['people_number'] = null;
+            }
+            if (in_array($orderType, ['take_away', 'dine_in'], true)) {
+                $state['session']['address'] = null;
+            }
+        }
         if (isset($data['branch_id'])) {
             $state['cart'] = [];
             $state['session']['table_id'] = null;
