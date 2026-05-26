@@ -225,36 +225,47 @@ class PosController extends Controller
     public function storeCustomer(Request $request): JsonResponse
     {
         $validator = Validator::make($request->all(), [
-            'f_name' => 'required',
-            'l_name' => 'required',
-            'phone' => 'required',
-            'email' => 'required|email',
+            'name' => 'required|string|max:200',
+            'email' => 'nullable|email|max:100',
+            'phone' => 'nullable|string|max:20',
         ]);
 
         if ($validator->fails()) {
             return response()->json(['errors' => Helpers::error_processor($validator)], 422);
         }
 
-        if ($this->user->where('phone', $request->phone)->exists()) {
+        $name = trim($request->name);
+        if ($name === '') {
+            return response()->json(['errors' => [['message' => translate('name is required')]]], 422);
+        }
+
+        $parts = preg_split('/\s+/', $name, 2);
+        $fName = $parts[0];
+        $lName = $parts[1] ?? '';
+
+        $phone = $request->filled('phone') ? trim($request->phone) : null;
+        $email = $request->filled('email') ? trim($request->email) : null;
+
+        if ($phone && $this->user->where('phone', $phone)->exists()) {
             return response()->json(['errors' => [['message' => translate('The phone is already taken')]]], 422);
         }
 
-        if ($this->user->where('email', $request->email)->exists()) {
+        if ($email && $this->user->where('email', $email)->exists()) {
             return response()->json(['errors' => [['message' => translate('The email is already taken')]]], 422);
         }
 
         $customer = $this->user->create([
-            'f_name' => $request->f_name,
-            'l_name' => $request->l_name,
-            'email' => $request->email,
-            'phone' => $request->phone,
+            'f_name' => $fName,
+            'l_name' => $lName,
+            'email' => $email,
+            'phone' => $phone,
             'password' => bcrypt('password'),
         ]);
 
         return response()->json([
             'customer' => [
                 'id' => $customer->id,
-                'text' => trim($customer->f_name . ' ' . $customer->l_name . ' (' . $customer->phone . ')'),
+                'text' => $this->formatCustomerLabel($customer),
             ],
         ]);
     }
@@ -265,27 +276,41 @@ class PosController extends Controller
         $key = explode(' ', $q);
         $data = $this->user
             ->where(['user_type' => null])
+            ->whereNotNull('f_name')
             ->when($q, function ($query) use ($key) {
                 $query->where(function ($q) use ($key) {
                     foreach ($key as $value) {
+                        if ($value === '') {
+                            continue;
+                        }
                         $q->orWhere('f_name', 'like', "%{$value}%")
                             ->orWhere('l_name', 'like', "%{$value}%")
-                            ->orWhere('phone', 'like', "%{$value}%");
+                            ->orWhere('phone', 'like', "%{$value}%")
+                            ->orWhere('email', 'like', "%{$value}%");
                     }
                 });
             })
-            ->whereNotNull(['f_name', 'l_name', 'phone'])
             ->limit(20)
-            ->get(['id', 'f_name', 'l_name', 'phone']);
+            ->get(['id', 'f_name', 'l_name', 'phone', 'email']);
 
         $customers = $data->map(fn ($c) => [
             'id' => $c->id,
-            'text' => trim($c->f_name . ' ' . $c->l_name . ' (' . $c->phone . ')'),
+            'text' => $this->formatCustomerLabel($c),
         ])->values();
 
         return response()->json([
             'customers' => $customers->prepend(['id' => null, 'text' => translate('walk_in_customer')])->values(),
         ]);
+    }
+
+    private function formatCustomerLabel($customer): string
+    {
+        $label = trim(($customer->f_name ?? '') . ' ' . ($customer->l_name ?? ''));
+        if (!empty($customer->phone)) {
+            $label .= ' (' . $customer->phone . ')';
+        }
+
+        return $label;
     }
 
     public function tables(Request $request): JsonResponse
