@@ -276,6 +276,9 @@ Route::group(['namespace' => 'Api\V1', 'middleware' => 'localization'], function
         Route::get('tables', [PosController::class, 'tables']);
         Route::get('delivery-info', [PosController::class, 'deliveryInfo']);
         Route::post('delivery-address', [PosController::class, 'addDeliveryAddress']);
+        Route::get('orders', [PosController::class, 'orders']);
+        Route::get('orders/{id}/invoice', [PosController::class, 'orderInvoice']);
+        Route::get('orders/{id}', [PosController::class, 'orderDetails']);
         Route::post('orders', [PosController::class, 'placeOrder']);
     });
 

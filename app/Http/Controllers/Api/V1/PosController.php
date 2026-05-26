@@ -4,8 +4,10 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\CentralLogics\Helpers;
 use App\Http\Controllers\Controller;
+use App\Model\AddOn;
 use App\Model\Branch;
 use App\Model\Category;
+use App\Model\Order;
 use App\Model\Product;
 use App\Model\ProductByBranch;
 use App\Model\Table;
@@ -13,6 +15,7 @@ use App\Models\DeliveryChargeByArea;
 use App\Services\Pos\PosCartService;
 use App\Services\Pos\PosOrderService;
 use App\User;
+use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -30,6 +33,7 @@ class PosController extends Controller
         private Branch $branch,
         private Table $table,
         private User $user,
+        private Order $order,
     ) {
     }
 
@@ -407,6 +411,291 @@ class PosController extends Controller
             'order_id' => $result['order_id'],
             'message' => $result['message'],
         ]);
+    }
+
+    public function orders(Request $request): JsonResponse
+    {
+        $search = $request->query('search');
+        $branchId = $request->query('branch_id');
+        $from = $request->query('from');
+        $to = $request->query('to');
+        $limit = (int) $request->query('limit', Helpers::getPagination());
+        $offset = (int) $request->query('offset', 1);
+
+        $query = $this->posOrdersBaseQuery()
+            ->with(['customer:id,f_name,l_name,phone', 'branch:id,name']);
+
+        if ($request->filled('search')) {
+            $key = explode(' ', $search);
+            $query->where(function ($q) use ($key) {
+                foreach ($key as $value) {
+                    if ($value === '') {
+                        continue;
+                    }
+                    $q->orWhere('id', 'like', "%{$value}%")
+                        ->orWhere('order_status', 'like', "%{$value}%")
+                        ->orWhere('transaction_reference', 'like', "%{$value}%");
+                }
+            });
+        } elseif ($request->has('filter')) {
+            $query->when($from && $to && $branchId === 'all', function ($q) use ($from, $to) {
+                $q->whereBetween('created_at', [$from, Carbon::parse($to)->endOfDay()]);
+            })
+                ->when($from && $to && $branchId !== 'all' && $branchId !== null, function ($q) use ($from, $to, $branchId) {
+                    $q->whereBetween('created_at', [$from, Carbon::parse($to)->endOfDay()])
+                        ->where('branch_id', $branchId);
+                })
+                ->when(!$from && !$to && $branchId !== 'all' && $branchId !== null, function ($q) use ($branchId) {
+                    $q->where('branch_id', $branchId);
+                });
+        }
+
+        $paginator = $query->latest()->paginate($limit, ['*'], 'page', $offset);
+
+        return response()->json([
+            'total_size' => $paginator->total(),
+            'limit' => $limit,
+            'offset' => $offset,
+            'orders' => collect($paginator->items())->map(fn ($order) => $this->formatOrderSummary($order))->values(),
+        ]);
+    }
+
+    public function orderDetails(int $id): JsonResponse
+    {
+        $order = $this->findPosOrder($id);
+        if (!$order) {
+            return response()->json(['errors' => [['message' => translate('Order not found')]]], 404);
+        }
+
+        return response()->json(['order' => $this->formatOrderDetail($order)]);
+    }
+
+    public function orderInvoice(int $id): JsonResponse
+    {
+        $order = $this->findPosOrder($id);
+        if (!$order) {
+            return response()->json(['errors' => [['message' => translate('Order not found')]]], 404);
+        }
+
+        $order->load(['details.product', 'customer', 'order_change_amount']);
+
+        return response()->json([
+            'success' => 1,
+            'view' => view('admin-views.pos.order.invoice', compact('order'))->render(),
+        ]);
+    }
+
+    private function posOrdersBaseQuery()
+    {
+        return $this->order->newQuery()
+            ->whereIn('order_type', ['pos', 'dine_in', 'delivery'])
+            ->where('checked', 1);
+    }
+
+    private function findPosOrder(int $id): ?Order
+    {
+        return $this->posOrdersBaseQuery()
+            ->with([
+                'customer:id,f_name,l_name,phone,email',
+                'branch:id,name,phone,address',
+                'table:id,number,capacity',
+                'customer_delivery_address',
+                'details.product',
+                'order_change_amount',
+            ])
+            ->where('id', $id)
+            ->first();
+    }
+
+    private function formatOrderSummary(Order $order): array
+    {
+        $customerInfo = $this->orderCustomerInfo($order);
+
+        return [
+            'id' => $order->id,
+            'created_at' => $order->created_at?->toIso8601String(),
+            'order_amount' => (float) $order->order_amount,
+            'payment_status' => $order->payment_status,
+            'order_status' => $order->order_status,
+            'order_type' => $order->order_type,
+            'payment_method' => $order->payment_method,
+            'customer' => $customerInfo['customer'],
+            'customer_label' => $customerInfo['label'],
+            'branch' => $order->branch ? [
+                'id' => $order->branch->id,
+                'name' => $order->branch->name,
+            ] : null,
+        ];
+    }
+
+    private function orderCustomerInfo(Order $order): array
+    {
+        if ($order->user_id === null) {
+            return [
+                'label' => 'walk_in',
+                'customer' => null,
+            ];
+        }
+
+        if (!$order->customer) {
+            return [
+                'label' => 'unavailable',
+                'customer' => null,
+            ];
+        }
+
+        return [
+            'label' => null,
+            'customer' => [
+                'name' => trim(($order->customer->f_name ?? '') . ' ' . ($order->customer->l_name ?? '')),
+                'phone' => $order->customer->phone,
+            ],
+        ];
+    }
+
+    private function formatOrderDetail(Order $order): array
+    {
+        $customerInfo = $this->orderCustomerInfo($order);
+        $items = [];
+        $itemPrice = 0;
+        $totalTax = 0;
+        $addOnsCost = 0;
+        $addOnsTaxCost = 0;
+
+        foreach ($order->details as $detail) {
+            if (!$detail->product) {
+                continue;
+            }
+
+            $formatted = $this->formatOrderDetailLine($detail);
+            $items[] = $formatted;
+            $lineAmount = ($detail->price - $detail->discount_on_product) * $detail->quantity;
+            $itemPrice += $lineAmount;
+            $totalTax += $detail->tax_amount * $detail->quantity;
+            $addOnsCost += $formatted['addon_cost'];
+            $addOnsTaxCost += $formatted['addon_tax_cost'];
+        }
+
+        $couponDiscount = (float) ($order->coupon_discount_amount ?? 0);
+        $extraDiscount = (float) ($order->extra_discount ?? 0);
+        $deliveryCharge = $order->order_type === 'pos' ? 0.0 : (float) ($order->delivery_charge ?? 0);
+        $taxTotal = $totalTax + $addOnsTaxCost;
+        $subtotal = $addOnsCost + $itemPrice + $taxTotal - $couponDiscount - $extraDiscount;
+
+        $changeAmount = null;
+        $paidAmount = null;
+        if ($order->order_change_amount) {
+            $paidAmount = (float) $order->order_change_amount->paid_amount;
+            $changeAmount = $paidAmount - (float) $order->order_change_amount->order_amount;
+        }
+
+        $deliveryAddress = null;
+        if ($order->order_type === 'delivery' && $order->customer_delivery_address) {
+            $addr = $order->customer_delivery_address;
+            $deliveryAddress = [
+                'contact_person_name' => $addr->contact_person_name ?? null,
+                'contact_person_number' => $addr->contact_person_number ?? null,
+                'address' => $addr->address ?? null,
+            ];
+        }
+
+        return [
+            'id' => $order->id,
+            'created_at' => $order->created_at?->toIso8601String(),
+            'order_type' => $order->order_type,
+            'order_status' => $order->order_status,
+            'payment_method' => $order->payment_method,
+            'payment_status' => $order->payment_status,
+            'order_note' => $order->order_note,
+            'transaction_reference' => $order->transaction_reference,
+            'branch' => $order->branch ? [
+                'id' => $order->branch->id,
+                'name' => $order->branch->name,
+            ] : null,
+            'customer' => $customerInfo['customer'],
+            'customer_label' => $customerInfo['label'],
+            'table' => $order->table ? [
+                'id' => $order->table->id,
+                'number' => $order->table->number,
+            ] : null,
+            'number_of_people' => $order->number_of_people,
+            'delivery_address' => $deliveryAddress,
+            'items' => $items,
+            'summary' => [
+                'items_price' => round($itemPrice, 2),
+                'addon_cost' => round($addOnsCost, 2),
+                'coupon_discount' => round($couponDiscount, 2),
+                'extra_discount' => round($extraDiscount, 2),
+                'tax' => round($taxTotal, 2),
+                'subtotal' => round($subtotal, 2),
+                'delivery_charge' => round($deliveryCharge, 2),
+                'total' => round((float) $order->order_amount, 2),
+                'paid_amount' => $paidAmount,
+                'change_or_due_amount' => $changeAmount,
+            ],
+        ];
+    }
+
+    private function formatOrderDetailLine($detail): array
+    {
+        $variations = [];
+        $variationData = json_decode($detail->variation ?? '[]', true) ?: [];
+        if (is_array($variationData)) {
+            foreach ($variationData as $variation) {
+                if (isset($variation['name'], $variation['values']) && is_array($variation['values'])) {
+                    $labels = [];
+                    foreach ($variation['values'] as $value) {
+                        $labels[] = ($value['label'] ?? '') . ': ' . Helpers::set_symbol($value['optionPrice'] ?? 0);
+                    }
+                    $variations[] = [
+                        'name' => $variation['name'],
+                        'values' => $labels,
+                    ];
+                } elseif (is_array($variation)) {
+                    foreach ($variation as $key => $val) {
+                        $variations[] = ['name' => (string) $key, 'values' => [(string) $val]];
+                    }
+                }
+            }
+        }
+
+        $addons = [];
+        $addonCost = 0.0;
+        $addonTaxCost = 0.0;
+        $addOnIds = json_decode($detail->add_on_ids ?? '[]', true) ?: [];
+        $addOnQtys = json_decode($detail->add_on_qtys ?? '[]', true);
+        $addOnPrices = json_decode($detail->add_on_prices ?? '[]', true) ?: [];
+        $addOnTaxes = json_decode($detail->add_on_taxes ?? '[]', true) ?: [];
+
+        foreach ($addOnIds as $key2 => $addonId) {
+            $addon = AddOn::find($addonId);
+            $qty = $addOnQtys === null ? 1 : ($addOnQtys[$key2] ?? 1);
+            $price = (float) ($addOnPrices[$key2] ?? 0);
+            $tax = (float) ($addOnTaxes[$key2] ?? 0);
+            $addonCost += $price * $qty;
+            $addonTaxCost += $tax * $qty;
+            $addons[] = [
+                'name' => $addon ? $addon->name : translate('addon deleted'),
+                'quantity' => (int) $qty,
+                'price' => $price,
+            ];
+        }
+
+        $lineDiscount = (float) $detail->discount_on_product * (int) $detail->quantity;
+        $lineTotal = ($detail->price - $detail->discount_on_product) * $detail->quantity;
+
+        return [
+            'product_name' => $detail->product?->name,
+            'quantity' => (int) $detail->quantity,
+            'unit_price' => (float) $detail->price,
+            'discount_on_product' => $lineDiscount,
+            'tax_amount' => (float) $detail->tax_amount * (int) $detail->quantity,
+            'line_total' => round($lineTotal, 2),
+            'variations' => $variations,
+            'addons' => $addons,
+            'addon_cost' => $addonCost,
+            'addon_tax_cost' => $addonTaxCost,
+        ];
     }
 
     private function productImageUrl(?string $image): string
