@@ -10,6 +10,7 @@ use App\Model\Order;
 use App\Model\OrderDetail;
 use App\User;
 use Brian2694\Toastr\Facades\Toastr;
+use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
@@ -91,6 +92,13 @@ class KitchenController extends Controller
                 ->orderBy('created_at', 'ASC')
                 ->paginate($limit, ['*'], 'page', $offset);
 
+        } elseif ($orderStatus == 'pending') {
+            $orders = $this->order
+                ->where('branch_id', $branchId)
+                ->whereIn('order_status', ['pending', 'confirmed'])
+                ->latest()
+                ->paginate($limit, ['*'], 'page', $offset);
+
         } else {
             $orders = $this->order
                 ->where(['order_status' => $orderStatus, 'branch_id' => $branchId])
@@ -138,15 +146,75 @@ class KitchenController extends Controller
      */
     public function changeStatus(Request $request): JsonResponse
     {
-        $order = $this->order->find($request->order_id);
-        $oldStatus = $order->order_status;
-        $order->order_status = $request->order_status;
+        $validator = Validator::make($request->all(), [
+            'order_id' => 'required',
+            'order_status' => 'required|in:cooking,done',
+        ]);
 
-        if ($request->order_status == 'done') {
-            $deliverymanFcmToken = null;
-            if (isset($order->delivery_man)) {
-                $deliverymanFcmToken = $order->delivery_man->fcm_token;
+        if ($validator->fails()) {
+            return response()->json(['errors' => Helpers::error_processor($validator)], 403);
+        }
+
+        $order = $this->order->with(['customer', 'delivery_man', 'guest'])->find($request->order_id);
+        if (!$order) {
+            return response()->json([
+                'errors' => [
+                    ['code' => 'order', 'message' => translate('no order found')]
+                ]
+            ], 404);
+        }
+
+        $chefBranch = $this->chefBranch->where('user_id', auth()->user()->id)->first();
+        if (!$chefBranch || (int) $order->branch_id !== (int) $chefBranch->branch_id) {
+            return response()->json([
+                'errors' => [
+                    ['code' => 'order', 'message' => translate('Order not found')]
+                ]
+            ], 403);
+        }
+
+        $oldStatus = $order->order_status;
+        $newStatus = $request->order_status;
+
+        $allowedFromPending = in_array($oldStatus, ['pending', 'confirmed'], true);
+        if ($newStatus === 'cooking' && !$allowedFromPending) {
+            return response()->json([
+                'errors' => [
+                    ['code' => 'order_status', 'message' => translate('Invalid status transition')]
+                ]
+            ], 403);
+        }
+
+        if ($newStatus === 'done' && $oldStatus !== 'cooking') {
+            return response()->json([
+                'errors' => [
+                    ['code' => 'order_status', 'message' => translate('Invalid status transition')]
+                ]
+            ], 403);
+        }
+
+        if ($newStatus === 'cooking') {
+            $prepValidator = Validator::make($request->all(), [
+                'preparation_time' => 'required|integer|min:1',
+            ]);
+            if ($prepValidator->fails()) {
+                return response()->json(['errors' => Helpers::error_processor($prepValidator)], 403);
             }
+
+            $preparationMinutes = (int) $request->preparation_time;
+            $order->preparation_time = $preparationMinutes;
+            $readyAt = Carbon::now()->addMinutes($preparationMinutes);
+            $order->delivery_date = $readyAt->format('Y-m-d');
+            $order->delivery_time = $readyAt->format('H:i:s');
+            $order->order_status = 'cooking';
+
+            $this->notifyOrderCustomer($order, 'cooking');
+        }
+
+        if ($newStatus === 'done') {
+            $order->order_status = 'done';
+
+            $deliverymanFcmToken = $order->delivery_man?->fcm_token;
             try {
                 $data = [
                     'title' => translate('Order'),
@@ -161,28 +229,11 @@ class KitchenController extends Controller
             } catch (\Exception $e) {
                 Toastr::warning(translate('Push notification failed for DeliveryMan!'));
             }
+
+            $this->notifyOrderCustomer($order, 'done');
         }
 
-        // Send notification when order is confirmed from pending (no sound)
-        if ($request->order_status == 'confirmed' && $oldStatus == 'pending') {
-            try {
-                $data = [
-                    'title' => translate('Order Confirmed'),
-                    'description' => translate('Order #') . $order->id . translate(' has been confirmed'),
-                    'order_id' => $order->id,
-                    'image' => '',
-                    'order_status' => $order->order_status,
-                    'is_confirmation' => '1',
-                ];
-                Helpers::send_push_notif_to_topic(data: $data, topic: "kitchen-{$order->branch_id}", type: 'general', isNotificationPayloadRemove: true);
-            } catch (\Exception $e) {
-                Toastr::warning(translate('Push notification failed!'));
-            }
-        }
-
-        $isUpdate = $order->update();
-
-        if ($isUpdate) {
+        if ($order->update()) {
             return response()->json(['orders' => $order, 'message' => translate('Order status updated!')], 200);
         }
 
@@ -191,6 +242,71 @@ class KitchenController extends Controller
                 ['code' => 'order', 'message' => translate('Status did not changed')]
             ]
         ], 401);
+    }
+
+    private function notifyOrderCustomer(Order $order, string $status): void
+    {
+        $message = Helpers::order_status_update_message($status);
+        if (!$message) {
+            $message = $status === 'cooking'
+                ? translate('Your order is being prepared')
+                : translate('Your order is ready');
+        }
+
+        $local = $order->is_guest == 0 ? ($order->customer?->language_code ?? 'en') : ($order->guest?->language_code ?? 'en');
+        if ($local != 'en') {
+            $statusKey = Helpers::order_status_message_key($status);
+            $translatedMessage = \App\Model\BusinessSetting::with('translations')
+                ->where(['key' => $statusKey])
+                ->first();
+            if (isset($translatedMessage?->translations)) {
+                foreach ($translatedMessage->translations as $translation) {
+                    if ($local == $translation->locale) {
+                        $message = $translation->value;
+                    }
+                }
+            }
+        }
+
+        $restaurantName = Helpers::get_business_settings('restaurant_name');
+        $deliverymanName = $order->delivery_man
+            ? $order->delivery_man->f_name . ' ' . $order->delivery_man->l_name
+            : '';
+        $customerName = $order->is_guest == 0
+            ? ($order->customer ? $order->customer->f_name . ' ' . $order->customer->l_name : '')
+            : ($order->guest ? $order->guest->f_name . ' ' . $order->guest->l_name : '');
+
+        $value = Helpers::text_variable_data_format(
+            value: $message,
+            user_name: $customerName,
+            restaurant_name: $restaurantName,
+            delivery_man_name: $deliverymanName,
+            order_id: $order->id
+        );
+
+        $customerFcmToken = null;
+        if ($order->is_guest == 0) {
+            $customerFcmToken = $order->customer?->cm_firebase_token;
+        } elseif ($order->is_guest == 1) {
+            $customerFcmToken = $order->guest?->fcm_token;
+        }
+
+        if (!$value || !$customerFcmToken) {
+            return;
+        }
+
+        try {
+            Helpers::send_push_notif_to_device($customerFcmToken, [
+                'title' => translate('Order'),
+                'description' => $value,
+                'order_id' => $order->id,
+                'image' => '',
+                'type' => 'order_status',
+                'order_status' => $order->order_status,
+            ]);
+        } catch (\Exception $e) {
+            // ignore push failures
+        }
     }
 
     /**

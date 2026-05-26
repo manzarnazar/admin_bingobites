@@ -498,6 +498,10 @@ class Helpers
             $data = self::get_business_settings('order_pending_message');
         } elseif ($status == 'confirmed') {
             $data = self::get_business_settings('order_confirmation_msg');
+        } elseif ($status == 'cooking') {
+            $data = self::get_business_settings('order_processing_message');
+        } elseif ($status == 'done') {
+            $data = self::get_business_settings('customer_notify_message');
         } elseif ($status == 'processing') {
             $data = self::get_business_settings('order_processing_message');
         } elseif ($status == 'out_for_delivery') {
@@ -1061,6 +1065,10 @@ class Helpers
             $data = 'order_pending_message';
         } elseif ($status == 'confirmed') {
             $data = 'order_confirmation_msg';
+        } elseif ($status == 'cooking') {
+            $data = 'order_processing_message';
+        } elseif ($status == 'done') {
+            $data = 'customer_notify_message';
         } elseif ($status == 'processing') {
             $data = 'order_processing_message';
         } elseif ($status == 'out_for_delivery') {

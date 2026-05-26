@@ -215,7 +215,7 @@ class PosOrderService
             $order->user_id = $session['customer_id'] ?? null;
             $order->coupon_discount_title = null;
             $order->payment_status = ($orderType == 'take_away') ? 'paid' : (($orderType == 'dine_in' && $paymentType != 'pay_after_eating') ? 'paid' : 'unpaid');
-            $order->order_status = $orderType == 'take_away' ? 'delivered' : 'confirmed';
+            $order->order_status = 'pending';
             $order->order_type = ($orderType == 'take_away') ? 'pos' : (($orderType == 'dine_in') ? 'dine_in' : 'delivery');
             $order->coupon_code = $requestData['coupon_code'] ?? null;
             $order->payment_method = $paymentType;
@@ -254,23 +254,22 @@ class PosOrderService
 
             $this->cartService->clearAfterOrder($adminId);
 
-            if ($order->order_type == 'dine_in') {
-                $notification = $this->notification;
-                $notification->title = 'You have a new order from POS - (Order Confirmed). ';
-                $notification->description = $order->id;
-                $notification->status = 1;
-                $notification->order_id = $order->id;
-                $notification->order_status = $order->order_status;
-                try {
-                    Helpers::send_push_notif_to_topic(
-                        data: $notification,
-                        topic: "kitchen-{$order->branch_id}",
-                        type: 'general',
-                        isNotificationPayloadRemove: true
-                    );
-                } catch (\Exception $e) {
-                    // ignore push failures
-                }
+            try {
+                Helpers::send_push_notif_to_topic(
+                    data: [
+                        'title' => translate('You have a new order from POS - (Order Pending).'),
+                        'description' => $order->id,
+                        'order_id' => $order->id,
+                        'image' => '',
+                        'order_status' => $order->order_status,
+                        'is_confirmation' => '0',
+                    ],
+                    topic: "kitchen-{$order->branch_id}",
+                    type: 'general',
+                    isNotificationPayloadRemove: true
+                );
+            } catch (\Exception $e) {
+                // ignore push failures
             }
 
             if ($order->order_type == 'delivery') {

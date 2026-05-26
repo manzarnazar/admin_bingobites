@@ -441,7 +441,7 @@ class POSController extends Controller
         $order->user_id = session()->get('customer_id') ?? null;
         $order->coupon_discount_title = $request->coupon_discount_title == 0 ? null : 'coupon_discount_title';
         $order->payment_status = ($orderType == 'take_away') ? 'paid' : (($orderType == 'dine_in' && $request->type != 'pay_after_eating') ? 'paid' : 'unpaid');
-        $order->order_status = $orderType == 'take_away' ? 'delivered' : 'confirmed' ;
+        $order->order_status = 'pending';
         $order->order_type = ($orderType == 'take_away') ? 'pos' : (($orderType == 'dine_in') ? 'dine_in' : (($orderType == 'home_delivery') ? 'delivery' : null));
         $order->coupon_code = $request->coupon_code ?? null;
         $order->payment_method = $request->type;
@@ -589,20 +589,23 @@ class POSController extends Controller
             Toastr::success(translate('order_placed_successfully'));
 
             //send notification to kitchen
-            if ($order->order_type == 'dine_in') {
-                $notification = new Notification;
-                $notification->title = "You have a new order from POS - (Order Confirmed). ";
-                $notification->description = $order->id;
-                $notification->status = 1;
-                $notification->order_id =  $order->id;
-                $notification->order_status = $order->order_status;
-
-                try {
-                    Helpers::send_push_notif_to_topic(data: $notification, topic: "kitchen-{$order->branch_id}", type: 'general', isNotificationPayloadRemove: true);
-                    Toastr::success(translate('Notification sent successfully!'));
-                } catch (\Exception $e) {
-                    Toastr::warning(translate('Push notification failed!'));
-                }
+            try {
+                Helpers::send_push_notif_to_topic(
+                    data: [
+                        'title' => translate('You have a new order from POS - (Order Pending).'),
+                        'description' => $order->id,
+                        'order_id' => $order->id,
+                        'image' => '',
+                        'order_status' => $order->order_status,
+                        'is_confirmation' => '0',
+                    ],
+                    topic: "kitchen-{$order->branch_id}",
+                    type: 'general',
+                    isNotificationPayloadRemove: true
+                );
+                Toastr::success(translate('Notification sent successfully!'));
+            } catch (\Exception $e) {
+                Toastr::warning(translate('Push notification failed!'));
             }
 
             //send notification to customer for home delivery

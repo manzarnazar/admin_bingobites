@@ -696,15 +696,33 @@ class OrderController extends Controller
         $offlineData->save();
 
         if ($offlineData->status == 1){
-            $order->order_status = 'confirmed';
+            $order->order_status = 'pending';
             $order->payment_status = 'paid';
             $order->save();
 
-            $message = Helpers::order_status_update_message('confirmed');
+            try {
+                Helpers::send_push_notif_to_topic(
+                    data: [
+                        'title' => translate('You have a new order - (Order Pending).'),
+                        'description' => $order->id,
+                        'order_id' => $order->id,
+                        'image' => '',
+                        'order_status' => $order->order_status,
+                        'is_confirmation' => '0',
+                    ],
+                    topic: "kitchen-{$order->branch_id}",
+                    type: 'general',
+                    isNotificationPayloadRemove: true
+                );
+            } catch (\Exception $e) {
+                // ignore push failures
+            }
+
+            $message = Helpers::order_status_update_message('pending');
             $local = $order->is_guest == 0 ? ($order->customer ? $order->customer->language_code : 'en') : 'en';;
 
             if ($local != 'en'){
-                $statusKey = Helpers::order_status_message_key('confirmed');
+                $statusKey = Helpers::order_status_message_key('pending');
                 $translatedMessage = $this->business_setting->with('translations')->where(['key' => $statusKey])->first();
                 if (isset($translatedMessage->translations)){
                     foreach ($translatedMessage->translations as $translation){

@@ -203,7 +203,7 @@ class OrderController extends Controller
             $paymentStatus = ($request->payment_method == 'cash_on_delivery' || $request->payment_method == 'offline_payment') ? 'unpaid' : 'paid';
         }
 
-        $orderStatus = ($request->payment_method == 'cash_on_delivery' || $request->payment_method == 'offline_payment') ? 'pending' : 'confirmed';
+        $orderStatus = 'pending';
 
         try {
             DB::beginTransaction();
