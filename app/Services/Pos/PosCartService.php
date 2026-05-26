@@ -69,6 +69,12 @@ class PosCartService
     public function updateSession(int $adminId, array $data): array
     {
         $state = $this->getState($adminId);
+        $branchChanged = false;
+        if (isset($data['branch_id'])) {
+            $newBranchId = (int) $data['branch_id'];
+            $currentBranchId = (int) ($state['session']['branch_id'] ?? 0);
+            $branchChanged = $newBranchId !== $currentBranchId;
+        }
         $allowed = ['branch_id', 'customer_id', 'order_type', 'table_id', 'people_number', 'address'];
         foreach ($allowed as $key) {
             if (array_key_exists($key, $data)) {
@@ -85,7 +91,7 @@ class PosCartService
                 $state['session']['address'] = null;
             }
         }
-        if (isset($data['branch_id'])) {
+        if ($branchChanged) {
             $state['cart'] = [];
             $state['session']['table_id'] = null;
             $state['session']['people_number'] = null;
