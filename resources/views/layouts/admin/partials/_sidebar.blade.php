@@ -378,7 +378,7 @@
                             </li>
 
                             <!-- Pages -->
-                            <li class="navbar-vertical-aside-has-menu {{ Request::is('admin/addon*') ||Request::is('admin/product*') || Request::is('admin/attribute*') || Request::is('admin/reviews/list')?'active':''}}">
+                            <li class="navbar-vertical-aside-has-menu {{ Request::is('admin/addon*') ||Request::is('admin/product*') || Request::is('admin/attribute*') || Request::is('admin/modifier-group*') || Request::is('admin/reviews/list')?'active':''}}">
                                 <a class="js-navbar-vertical-aside-menu-link nav-link nav-link-toggle" href="javascript:"
                                 >
                                     <i class="tio-premium-outlined nav-icon"></i>
@@ -386,7 +386,7 @@
                                         class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">{{translate('product')}} {{translate('setup')}}</span>
                                 </a>
                                 <ul class="js-navbar-vertical-aside-submenu nav nav-sub"
-                                    style="display: {{Request::is('admin/product*') || Request::is('admin/addon*') || Request::is('admin/attribute*') || Request::is('admin/reviews*')?'block':'none'}}">
+                                    style="display: {{Request::is('admin/product*') || Request::is('admin/addon*') || Request::is('admin/attribute*') || Request::is('admin/modifier-group*') || Request::is('admin/reviews*')?'block':'none'}}">
 {{--                                    <li class="nav-item {{Request::is('admin/attribute*')?'active':''}}">--}}
 {{--                                        <a class="nav-link " href="{{route('admin.attribute.add-new')}}"--}}
 {{--                                           title="{{translate('Add product attribute')}}">--}}
@@ -401,6 +401,13 @@
                                             <span class="tio-circle nav-indicator-icon"></span>
                                             <span
                                                 class="text-truncate">{{translate('Product_Addon')}}</span>
+                                        </a>
+                                    </li>
+                                    <li class="nav-item {{Request::is('admin/modifier-group*')?'active':''}}">
+                                        <a class="nav-link " href="{{route('admin.modifier-group.index')}}"
+                                           title="{{translate('Modifier Groups')}}">
+                                            <span class="tio-circle nav-indicator-icon"></span>
+                                            <span class="text-truncate">{{translate('Modifier_Groups')}}</span>
                                         </a>
                                     </li>
                                     <li class="nav-item {{Request::is('admin/product/add-new') ?'active':'' }}">

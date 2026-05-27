@@ -117,7 +117,7 @@ class PosCartService
 
     public function addToCart(int $adminId, array $requestData): array
     {
-        $product = Product::findOrFail($requestData['id']);
+        $product = Product::with(['modifierGroups.options'])->findOrFail($requestData['id']);
         $branchId = $this->branchId($adminId);
 
         $branchProduct = ProductByBranch::where([
@@ -186,6 +186,7 @@ class PosCartService
 
         $addonPrice = 0;
         $addonTotalTax = 0;
+        $modifierPrice = 0;
         $addOnIds = $requestData['addon_id'] ?? [];
         $addOnQtys = [];
         $addOnPrices = [];
@@ -205,6 +206,16 @@ class PosCartService
             }
         }
 
+        $modifierData = $this->extractModifierSelection($requestData, $product);
+        if (!empty($modifierData['error'])) {
+            return [
+                'error' => true,
+                'code' => 'variation_error',
+                'message' => $modifierData['message'],
+            ];
+        }
+        $modifierPrice = $modifierData['price'];
+
         $item = [
             'id' => $product->id,
             'variation_price' => $variationPrice,
@@ -221,8 +232,11 @@ class PosCartService
             'add_on_tax' => $addOnTax,
             'addon_price' => $addonPrice,
             'addon_total_tax' => $addonTotalTax,
+            'modifier_groups' => $modifierData['selected'],
+            'modifier_price' => $modifierPrice,
             'discount_data' => $discountData,
         ];
+        $item['price'] += $modifierPrice;
 
         $state = $this->getState($adminId);
         $nextKey = $this->nextCartItemKey($state['cart']);
@@ -279,16 +293,22 @@ class PosCartService
 
     public function variantPrice(int $adminId, array $requestData): array
     {
-        $product = Product::findOrFail($requestData['id']);
+        $product = Product::with(['modifierGroups.options'])->findOrFail($requestData['id']);
         $branchId = $this->branchId($adminId);
         $price = $product->price;
         $addonPrice = 0;
+        $modifierPrice = 0;
         $quantity = (int) ($requestData['quantity'] ?? 1);
 
         if (!empty($requestData['addon_id'])) {
             foreach ($requestData['addon_id'] as $addonId) {
                 $addonPrice += ($requestData['addon-price' . $addonId] ?? 0) * ($requestData['addon-quantity' . $addonId] ?? 1);
             }
+        }
+
+        $modifierData = $this->extractModifierSelection($requestData, $product);
+        if (empty($modifierData['error'])) {
+            $modifierPrice = $modifierData['price'];
         }
 
         $branchProduct = ProductByBranch::where(['product_id' => $requestData['id'], 'branch_id' => $branchId])->first();
@@ -305,7 +325,7 @@ class PosCartService
             }
         }
 
-        return ['price' => Helpers::set_symbol(($price * $quantity) + $addonPrice)];
+        return ['price' => Helpers::set_symbol(($price * $quantity) + $addonPrice + $modifierPrice)];
     }
 
     public function buildCartResponse(int $adminId): array
@@ -393,5 +413,75 @@ class PosCartService
     public function clearAfterOrder(int $adminId): void
     {
         $this->saveState($adminId, $this->defaultState());
+    }
+
+    private function extractModifierSelection(array $requestData, Product $product): array
+    {
+        $modifierInputs = $requestData['modifier_groups'] ?? [];
+        if (empty($modifierInputs)) {
+            return ['selected' => [], 'price' => 0];
+        }
+
+        $attachedGroups = $product->modifierGroups->keyBy('id');
+        $selected = [];
+        $price = 0;
+
+        foreach ($modifierInputs as $groupId => $groupInput) {
+            $group = $attachedGroups->get((int) $groupId);
+            if (!$group) {
+                continue;
+            }
+
+            $values = $groupInput['values'] ?? [];
+            if (!is_array($values)) {
+                $values = [$values];
+            }
+            $values = array_values(array_filter($values, fn($value) => $value !== null && $value !== ''));
+
+            $required = (bool) ($group->pivot->is_required ?? $group->is_required);
+            $selectionType = $group->pivot->selection_type ?? $group->selection_type;
+            $min = (int) ($group->pivot->min ?? $group->min);
+            $max = (int) ($group->pivot->max ?? $group->max);
+
+            if ($required && count($values) === 0) {
+                return ['error' => true, 'message' => translate('Please select items from') . ' ' . $group->name];
+            }
+            if ($min > 0 && count($values) < $min) {
+                return ['error' => true, 'message' => translate('Please select minimum ') . $min . translate(' For ') . $group->name . '.'];
+            }
+            if ($max > 0 && count($values) > $max) {
+                return ['error' => true, 'message' => translate('Please select maximum ') . $max . translate(' For ') . $group->name . '.'];
+            }
+            if ($selectionType === 'single' && count($values) > 1) {
+                return ['error' => true, 'message' => translate('Please select maximum 1 For ') . $group->name . '.'];
+            }
+
+            $options = $group->options->whereIn('id', array_map('intval', $values))->values();
+            if ($options->isEmpty()) {
+                continue;
+            }
+
+            $optionPayload = [];
+            foreach ($options as $option) {
+                $optionPayload[] = [
+                    'id' => $option->id,
+                    'label' => $option->name,
+                    'optionPrice' => (float) $option->additional_price,
+                ];
+                $price += (float) $option->additional_price;
+            }
+
+            $selected[] = [
+                'group_id' => $group->id,
+                'name' => $group->name,
+                'type' => $selectionType,
+                'required' => $required ? 'on' : 'off',
+                'min' => $min,
+                'max' => $max,
+                'values' => $optionPayload,
+            ];
+        }
+
+        return ['selected' => $selected, 'price' => $price];
     }
 }

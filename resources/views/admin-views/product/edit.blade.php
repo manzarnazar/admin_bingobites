@@ -496,6 +496,75 @@
                                     </div>
                                 </div>
                                 <div class="col-12">
+                                    <div class="outline-wrapper">
+                                        <div class="card h-100">
+                                            <div class="card-header">
+                                                <h4 class="mb-0 d-flex gap-2 align-items-center">
+                                                    <i class="tio-puzzle"></i>
+                                                    {{ translate('Modifier_Groups') }}
+                                                </h4>
+                                            </div>
+                                            <div class="card-body">
+                                                @php($attachedModifierGroups = $product->modifierGroups->keyBy('id'))
+                                                <div class="d-flex flex-column gap-3">
+                                                    @foreach($modifierGroups as $modifierGroup)
+                                                        @php($pivot = $attachedModifierGroups->get($modifierGroup->id)?->pivot)
+                                                        @php($oldData = old('modifier_groups.'.$modifierGroup->id, []))
+                                                        @php($enabled = isset($oldData['enabled']) || $pivot)
+                                                        <div class="border rounded p-3">
+                                                            <div class="d-flex justify-content-between align-items-center gap-2 mb-2">
+                                                                <label class="d-flex gap-2 align-items-center m-0">
+                                                                    <input type="checkbox" name="modifier_groups[{{ $modifierGroup->id }}][enabled]"
+                                                                           value="1" {{ $enabled ? 'checked' : '' }}>
+                                                                    <span class="font-weight-semibold">{{ $modifierGroup->name }}</span>
+                                                                </label>
+                                                                <small>{{ $modifierGroup->options->count() }} {{ translate('options') }}</small>
+                                                            </div>
+                                                            <div class="row g-2 mt-2">
+                                                                <div class="col-md-3">
+                                                                    <label class="input-label">{{ translate('Selection_Type') }}</label>
+                                                                    <select class="form-control product-modifier-selection-type"
+                                                                            name="modifier_groups[{{ $modifierGroup->id }}][selection_type]">
+                                                                        @php($selectedType = $oldData['selection_type'] ?? ($pivot->selection_type ?? $modifierGroup->selection_type))
+                                                                        <option value="multi" {{ $selectedType === 'multi' ? 'selected' : '' }}>{{ translate('Multiple') }}</option>
+                                                                        <option value="single" {{ $selectedType === 'single' ? 'selected' : '' }}>{{ translate('Single') }}</option>
+                                                                    </select>
+                                                                </div>
+                                                                <div class="col-md-2">
+                                                                    <label class="input-label">{{ translate('Min') }}</label>
+                                                                    <input type="number" min="0" class="form-control product-modifier-min"
+                                                                           name="modifier_groups[{{ $modifierGroup->id }}][min]"
+                                                                           value="{{ $oldData['min'] ?? ($pivot->min ?? $modifierGroup->min) }}">
+                                                                </div>
+                                                                <div class="col-md-2">
+                                                                    <label class="input-label">{{ translate('Max') }}</label>
+                                                                    <input type="number" min="0" class="form-control product-modifier-max"
+                                                                           name="modifier_groups[{{ $modifierGroup->id }}][max]"
+                                                                           value="{{ $oldData['max'] ?? ($pivot->max ?? $modifierGroup->max) }}">
+                                                                </div>
+                                                                <div class="col-md-2">
+                                                                    <label class="input-label">{{ translate('Sort_Order') }}</label>
+                                                                    <input type="number" min="0" class="form-control"
+                                                                           name="modifier_groups[{{ $modifierGroup->id }}][position]"
+                                                                           value="{{ $oldData['position'] ?? ($pivot->position ?? $loop->index) }}">
+                                                                </div>
+                                                                <div class="col-md-3 d-flex align-items-end">
+                                                                    @php($requiredChecked = isset($oldData['is_required']) ? true : (isset($pivot->is_required) ? (bool) $pivot->is_required : (bool) $modifierGroup->is_required))
+                                                                    <label class="d-flex gap-2 align-items-center m-0">
+                                                                        <input type="checkbox" name="modifier_groups[{{ $modifierGroup->id }}][is_required]"
+                                                                               value="1" {{ $requiredChecked ? 'checked' : '' }}>
+                                                                        <span>{{ translate('Required') }}</span>
+                                                                    </label>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    @endforeach
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-12">
                                     <div class="tags_wrapper">
                                         <div class="outline-wrapper">
                                             <div class="card h-100 bg-animate">
@@ -694,6 +763,24 @@
     <script src="{{ asset('public/assets/admin/js/AI/image-compressor/compressor.min.js') }}"></script>
 
     <script>
+        function toggleProductModifierFields() {
+            $('.product-modifier-selection-type').each(function() {
+                const wrapper = $(this).closest('.row');
+                const minInput = wrapper.find('.product-modifier-min');
+                const maxInput = wrapper.find('.product-modifier-max');
+                if ($(this).val() === 'single') {
+                    minInput.val(0).prop('readonly', true);
+                    maxInput.val(0).prop('readonly', true);
+                } else {
+                    minInput.prop('readonly', false);
+                    maxInput.prop('readonly', false);
+                }
+            });
+        }
+
+        $(document).on('change', '.product-modifier-selection-type', toggleProductModifierFields);
+        toggleProductModifierFields();
+
         //Select 2
         $("#choose_addons").select2({
             placeholder: "Select Addons",

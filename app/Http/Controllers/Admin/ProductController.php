@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\CentralLogics\Helpers;
 use App\Http\Controllers\Controller;
 use App\Model\Category;
+use App\Model\ModifierGroup;
 use App\Model\Product;
 use App\Model\ProductByBranch;
 use App\Model\Review;
@@ -37,6 +38,7 @@ class ProductController extends Controller
         private ProductByBranch $productByBranch,
         private Translation     $translation,
         private Cuisine         $cuisine,
+        private ModifierGroup   $modifierGroup,
     )
     {}
 
@@ -99,7 +101,8 @@ class ProductController extends Controller
     {
         $categories = $this->category->where(['position' => 0])->get();
         $cuisines = $this->cuisine::active()->orderBy('priority', 'ASC')->get();
-        return view('admin-views.product.index', compact('categories', 'cuisines'));
+        $modifierGroups = $this->modifierGroup->with('options')->where('is_active', 1)->orderBy('name')->get();
+        return view('admin-views.product.index', compact('categories', 'cuisines', 'modifierGroups'));
     }
 
     /**
@@ -320,6 +323,7 @@ class ProductController extends Controller
 
         $product->tags()->sync($tagIds);
         $product->cuisines()->sync($request->cuisines);
+        $product->modifierGroups()->sync($this->buildModifierGroupSyncData($request));
 
         $mainBranchProduct = $this->productByBranch;
         $mainBranchProduct->product_id = $product->id;
@@ -371,12 +375,13 @@ class ProductController extends Controller
      */
     public function edit($id): View|Factory|Application
     {
-        $product = $this->product->withoutGlobalScopes()->with(['translations', 'main_branch_product', 'cuisines'])->find($id);
+        $product = $this->product->withoutGlobalScopes()->with(['translations', 'main_branch_product', 'cuisines', 'modifierGroups'])->find($id);
         $product_category = json_decode($product->category_ids);
         $categories = $this->category->where(['parent_id' => 0])->get();
         $cuisines = $this->cuisine::active()->orderBy('priority', 'ASC')->get();
+        $modifierGroups = $this->modifierGroup->with('options')->where('is_active', 1)->orderBy('name')->get();
 
-        return view('admin-views.product.edit', compact('product', 'product_category', 'categories', 'cuisines'));
+        return view('admin-views.product.edit', compact('product', 'product_category', 'categories', 'cuisines', 'modifierGroups'));
     }
 
     /**
@@ -593,6 +598,7 @@ class ProductController extends Controller
 
         $product->tags()->sync($tagIds);
         $product->cuisines()->sync($request->cuisines);
+        $product->modifierGroups()->sync($this->buildModifierGroupSyncData($request));
 
         $productBranchData = [
             'product_id'     => $product->id,
@@ -959,5 +965,37 @@ class ProductController extends Controller
 
         Toastr::success(translate('updated successfully!'));
         return back();
+    }
+
+    private function buildModifierGroupSyncData(Request $request): array
+    {
+        $syncData = [];
+        $modifierGroups = $request->input('modifier_groups', []);
+
+        foreach ($modifierGroups as $groupId => $modifierGroup) {
+            if (!isset($modifierGroup['enabled'])) {
+                continue;
+            }
+
+            $selectionType = ($modifierGroup['selection_type'] ?? 'multi') === 'single' ? 'single' : 'multi';
+            $min = (int) ($modifierGroup['min'] ?? 0);
+            $max = (int) ($modifierGroup['max'] ?? 0);
+
+            if ($selectionType === 'single') {
+                $min = 0;
+                $max = 0;
+            }
+
+            $syncData[(int) $groupId] = [
+                'selection_type' => $selectionType,
+                'min' => $min,
+                'max' => $max,
+                'is_required' => isset($modifierGroup['is_required']) ? 1 : 0,
+                'position' => (int) ($modifierGroup['position'] ?? 0),
+                'is_default_enabled' => 1,
+            ];
+        }
+
+        return $syncData;
     }
 }
