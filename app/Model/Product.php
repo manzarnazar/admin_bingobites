@@ -126,14 +126,6 @@ class Product extends Model
         return $this->hasMany(ProductByBranch::class);
     }
 
-    public function modifierGroups(): BelongsToMany
-    {
-        return $this->belongsToMany(ModifierGroup::class, 'modifier_group_product')
-            ->withPivot(['selection_type', 'min', 'max', 'is_required', 'position', 'is_default_enabled'])
-            ->withTimestamps()
-            ->orderBy('modifier_group_product.position');
-    }
-
     public function getImageFullPathAttribute(): string
     {
         $image = $this->image ?? null;

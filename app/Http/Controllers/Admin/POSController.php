@@ -108,7 +108,7 @@ class POSController extends Controller
      */
     public function quick_view(Request $request): JsonResponse
     {
-        $product = $this->product->with(['modifierGroups.options'])->findOrFail($request->product_id);
+        $product = $this->product->findOrFail($request->product_id);
 
         return response()->json([
             'success' => 1,
@@ -128,19 +128,12 @@ class POSController extends Controller
 
         $price = $product->price;
         $addon_price = 0;
-        $modifier_price = 0;
 
         if ($request['addon_id']) {
             foreach ($request['addon_id'] as $id) {
                 $addon_price += $request['addon-price' . $id] * $request['addon-quantity' . $id];
             }
         }
-
-        $modifierData = $this->extractModifierSelection($request, $product);
-        if (!empty($modifierData['error'])) {
-            return ['price' => Helpers::set_symbol(0)];
-        }
-        $modifier_price = $modifierData['price'];
 
         $branch_product = $this->productByBranch->where(['product_id' => $request->id, 'branch_id' => session()->get('branch_id')])->first();
 
@@ -160,7 +153,7 @@ class POSController extends Controller
             }
         }
 
-        return array('price' => Helpers::set_symbol(($price * $request->quantity) + $addon_price + $modifier_price));
+        return array('price' => Helpers::set_symbol(($price * $request->quantity) + $addon_price));
     }
 
     /**
@@ -284,7 +277,6 @@ class POSController extends Controller
         $addon_price = 0;
         $addon_total_tax = 0;
         $variation_price = 0;
-        $modifier_price = 0;
 
         $branch_product = $this->productByBranch->where(['product_id' => $request->id, 'branch_id' => session()->get('branch_id')])->first();
 
@@ -376,19 +368,6 @@ class POSController extends Controller
         $data['addon_price'] = $addon_price;
         $data['addon_total_tax'] = $addon_total_tax;
         $data['discount_data'] = $discount_data;
-
-        $modifierData = $this->extractModifierSelection($request, $product);
-        if (!empty($modifierData['error'])) {
-            return response()->json([
-                'data' => 'variation_error',
-                'message' => $modifierData['message'],
-            ]);
-        }
-
-        $modifier_price = $modifierData['price'];
-        $data['modifier_groups'] = $modifierData['selected'];
-        $data['modifier_price'] = $modifier_price;
-        $data['price'] = $data['price'] + $modifier_price;
 
         if ($request->session()->has('cart')) {
             $cart = $request->session()->get('cart', collect([]));
@@ -556,7 +535,6 @@ class POSController extends Controller
 
                     $discount = Helpers::discount_calculate($discount_data, $price);
                     $variations = $variation_data['variations'];
-                    $modifierGroups = $c['modifier_groups'] ?? [];
 
                     $or_d = [
                         'product_id' => $c['id'],
@@ -567,7 +545,7 @@ class POSController extends Controller
                         'discount_on_product' => $discount,
                         'discount_type' => 'discount_on_product',
                         //'variant' => json_encode($c['variant']),
-                        'variation' => json_encode(array_merge($variations, ['modifier_groups' => $modifierGroups])),
+                        'variation' => json_encode($variations),
                         'add_on_ids' => json_encode($addon_data['addons']),
                         'add_on_qtys' => json_encode($c['add_on_qtys']),
                         'add_on_prices' => json_encode($c['add_on_prices']),
@@ -1111,76 +1089,6 @@ class POSController extends Controller
         // Send POST request
         $response = Http::withHeaders($headers)->post($url, $data);
         return $response->json();
-    }
-
-    private function extractModifierSelection(Request $request, Product $product): array
-    {
-        $modifierInputs = $request->input('modifier_groups', []);
-        if (empty($modifierInputs)) {
-            return ['selected' => [], 'price' => 0];
-        }
-
-        $attachedGroups = $product->modifierGroups()->with('options')->get()->keyBy('id');
-        $selected = [];
-        $price = 0;
-
-        foreach ($modifierInputs as $groupId => $groupInput) {
-            $group = $attachedGroups->get((int) $groupId);
-            if (!$group) {
-                continue;
-            }
-
-            $values = $groupInput['values'] ?? [];
-            if (!is_array($values)) {
-                $values = [$values];
-            }
-            $values = array_values(array_filter($values, fn($value) => $value !== null && $value !== ''));
-
-            $required = (bool) ($group->pivot->is_required ?? $group->is_required);
-            $selectionType = $group->pivot->selection_type ?? $group->selection_type;
-            $min = (int) ($group->pivot->min ?? $group->min);
-            $max = (int) ($group->pivot->max ?? $group->max);
-
-            if ($required && count($values) === 0) {
-                return ['error' => true, 'message' => translate('Please select items from') . ' ' . $group->name];
-            }
-            if ($min > 0 && count($values) < $min) {
-                return ['error' => true, 'message' => translate('Please select minimum ') . $min . translate(' For ') . $group->name . '.'];
-            }
-            if ($max > 0 && count($values) > $max) {
-                return ['error' => true, 'message' => translate('Please select maximum ') . $max . translate(' For ') . $group->name . '.'];
-            }
-            if ($selectionType === 'single' && count($values) > 1) {
-                return ['error' => true, 'message' => translate('Please select maximum 1 For ') . $group->name . '.'];
-            }
-
-            $options = $group->options->whereIn('id', array_map('intval', $values))->values();
-            if ($options->isEmpty()) {
-                continue;
-            }
-
-            $optionPayload = [];
-            foreach ($options as $option) {
-                $optionPayload[] = [
-                    'id' => $option->id,
-                    'label' => $option->name,
-                    'optionPrice' => (float) $option->additional_price,
-                ];
-                $price += (float) $option->additional_price;
-            }
-
-            $selected[] = [
-                'group_id' => $group->id,
-                'name' => $group->name,
-                'type' => $selectionType,
-                'required' => $required ? 'on' : 'off',
-                'min' => $min,
-                'max' => $max,
-                'values' => $optionPayload,
-            ];
-        }
-
-        return ['selected' => $selected, 'price' => $price];
     }
 
     public function order_type_store(Request $request)

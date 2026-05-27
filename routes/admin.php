@@ -40,7 +40,6 @@ use App\Http\Controllers\Admin\WalletBonusController;
 use App\Http\Controllers\Admin\LoginSetupController;
 use App\Http\Controllers\Admin\DeliveryChargeSetupController;
 use App\Http\Controllers\Admin\AISettingsController;
-use App\Http\Controllers\Admin\ModifierGroupController;
 
 Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
     Route::get('lang/{locale}', [LanguageController::class, 'lang'])->name('lang');
@@ -162,16 +161,6 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
             Route::get('edit/{id}', [AddonController::class, 'edit'])->name('edit');
             Route::post('update/{id}', [AddonController::class, 'update'])->name('update');
             Route::delete('delete/{id}', [AddonController::class, 'delete'])->name('delete');
-        });
-
-        Route::group(['prefix' => 'modifier-group', 'as' => 'modifier-group.', 'middleware' => ['module:product_management']], function () {
-            Route::get('/', [ModifierGroupController::class, 'index'])->name('index');
-            Route::get('create', [ModifierGroupController::class, 'create'])->name('create');
-            Route::post('store', [ModifierGroupController::class, 'store'])->name('store');
-            Route::get('edit/{id}', [ModifierGroupController::class, 'edit'])->name('edit');
-            Route::post('update/{id}', [ModifierGroupController::class, 'update'])->name('update');
-            Route::delete('delete/{id}', [ModifierGroupController::class, 'delete'])->name('delete');
-            Route::post('bulk-attach', [ModifierGroupController::class, 'bulkAttach'])->name('bulk-attach');
         });
 
         Route::group(['prefix' => 'delivery-man', 'as' => 'delivery-man.', 'middleware' => ['module:user_management']], function () {

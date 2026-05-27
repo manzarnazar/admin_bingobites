@@ -159,47 +159,6 @@
                     </div>
 
                     @php($add_ons = json_decode($product->add_ons))
-                    @if($product->relationLoaded('modifierGroups') && $product->modifierGroups->count() > 0)
-                        <div class="p-3 shadow rounded-10">
-                            <h3>{{ translate('Modifier_Groups') }}</h3>
-                            <div class="d-flex flex-column gap-3">
-                                @foreach($product->modifierGroups as $modifierGroup)
-                                    @php($selectionType = $modifierGroup->pivot->selection_type ?? $modifierGroup->selection_type)
-                                    @php($required = (bool) ($modifierGroup->pivot->is_required ?? $modifierGroup->is_required))
-                                    @php($min = (int) ($modifierGroup->pivot->min ?? $modifierGroup->min))
-                                    @php($max = (int) ($modifierGroup->pivot->max ?? $modifierGroup->max))
-                                    <div class="border rounded p-3 variation-group">
-                                        <div class="h3 p-0 d-flex justify-content-between align-items-center">
-                                            <span>{{ $modifierGroup->name }}</span>
-                                            <span class="badge badge-soft-secondary font-weight-medium variant-name-optional-or-required-label">
-                                                {{ $required ? translate('Required') : translate('optional') }}
-                                            </span>
-                                        </div>
-                                        @if($min > 0 || $max > 0)
-                                            <small class="d-block mb-3">
-                                                {{ translate('You_need_to_select_minimum_ ') }} {{ $min }} {{ translate('to_maximum_ ') }} {{ $max }} {{ translate('options') }}
-                                            </small>
-                                        @endif
-                                        <div class="d-flex flex-column gap-2">
-                                            @foreach($modifierGroup->options as $option)
-                                                <div class="d-flex form--check form-check user-select-none">
-                                                    <div class="d-flex gap-2">
-                                                        <input class="form-check-input variation-input" type="{{ $selectionType === 'multi' ? 'checkbox' : 'radio' }}"
-                                                               id="modifier-{{ $modifierGroup->id }}-{{ $option->id }}"
-                                                               name="modifier_groups[{{ $modifierGroup->id }}][values]{{ $selectionType === 'multi' ? '[]' : '' }}"
-                                                               value="{{ $option->id }}" autocomplete="off">
-                                                        <label class="form-check-label" for="modifier-{{ $modifierGroup->id }}-{{ $option->id }}">{{ Str::limit($option->name, 24, '...') }}</label>
-                                                    </div>
-                                                    <span class="ml-auto">{{ \App\CentralLogics\Helpers::set_symbol($option->additional_price) }}</span>
-                                                </div>
-                                            @endforeach
-                                        </div>
-                                    </div>
-                                @endforeach
-                            </div>
-                        </div>
-                    @endif
-
                         @if(count($add_ons)>0)
                            <div class="p-3 shadow rounded-10">
                             <h3>{{ translate('addon') }}</h3>

@@ -69,23 +69,6 @@
                                             </div>
                                         @endforeach
                                     </small>
-                                    @if(!empty($cartItem['modifier_groups']))
-                                        <small class="d-block mt-1">
-                                            <strong><u>{{ translate('Modifiers') }} : </u></strong>
-                                            @foreach($cartItem['modifier_groups'] as $modifierGroup)
-                                                @if(!empty($modifierGroup['values']))
-                                                    @foreach($modifierGroup['values'] as $modifierValue)
-                                                        <div class="font-size-sm text-body">
-                                                            <span>{{ $modifierValue['label'] }}</span>
-                                                            @if(($modifierValue['optionPrice'] ?? 0) > 0)
-                                                                <span class="font-weight-bold">({{ Helpers::set_symbol($modifierValue['optionPrice']) }})</span>
-                                                            @endif
-                                                        </div>
-                                                    @endforeach
-                                                @endif
-                                            @endforeach
-                                        </small>
-                                    @endif
                                 </div>
                             </div>
                         </td>
