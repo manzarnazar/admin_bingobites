@@ -2,6 +2,28 @@
 
 @section('title', translate('Modifier Templates'))
 
+@push('css_or_js')
+    <style>
+        .template-item-row {
+            align-items: center;
+        }
+        .template-toggle-label {
+            display: flex;
+            align-items: center;
+            gap: .4rem;
+            white-space: nowrap;
+            margin-bottom: 0;
+        }
+        .template-item-actions {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: .5rem;
+            flex-wrap: nowrap;
+        }
+    </style>
+@endpush
+
 @section('content')
     <div class="content container-fluid">
         <div class="d-flex flex-wrap gap-2 align-items-center mb-4">
@@ -188,11 +210,13 @@
                                     <input type="number" min="0" class="form-control" name="items[0][sort_order]" placeholder="{{translate('Sort')}}">
                                 </div>
                                 <div class="col-md-2 d-flex align-items-center">
-                                    <label class="mb-0"><input type="checkbox" name="items[0][is_default]"> {{translate('Default')}}</label>
+                                    <label class="template-toggle-label"><input type="checkbox" name="items[0][is_default]"> {{translate('Default')}}</label>
                                 </div>
-                                <div class="col-md-2 d-flex align-items-center justify-content-between">
-                                    <label class="mb-0"><input type="checkbox" name="items[0][is_active]" checked> {{translate('Active')}}</label>
+                                <div class="col-md-2">
+                                    <div class="template-item-actions">
+                                    <label class="template-toggle-label"><input type="checkbox" name="items[0][is_active]" checked> {{translate('Active')}}</label>
                                     <button type="button" class="btn btn-danger btn-sm remove-template-item-row"><i class="tio-delete"></i></button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -227,11 +251,13 @@
                         <input type="number" min="0" class="form-control" name="items[${modifierTemplateRow}][sort_order]" placeholder="{{translate('Sort')}}">
                     </div>
                     <div class="col-md-2 d-flex align-items-center">
-                        <label class="mb-0"><input type="checkbox" name="items[${modifierTemplateRow}][is_default]"> {{translate('Default')}}</label>
+                        <label class="template-toggle-label"><input type="checkbox" name="items[${modifierTemplateRow}][is_default]"> {{translate('Default')}}</label>
                     </div>
-                    <div class="col-md-2 d-flex align-items-center justify-content-between">
-                        <label class="mb-0"><input type="checkbox" name="items[${modifierTemplateRow}][is_active]" checked> {{translate('Active')}}</label>
-                        <button type="button" class="btn btn-danger btn-sm remove-template-item-row"><i class="tio-delete"></i></button>
+                    <div class="col-md-2">
+                        <div class="template-item-actions">
+                            <label class="template-toggle-label"><input type="checkbox" name="items[${modifierTemplateRow}][is_active]" checked> {{translate('Active')}}</label>
+                            <button type="button" class="btn btn-danger btn-sm remove-template-item-row"><i class="tio-delete"></i></button>
+                        </div>
                     </div>
                 </div>`;
             $('#template-item-rows').append(rowHtml);

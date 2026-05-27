@@ -120,9 +120,15 @@ class Helpers
                 $item['category_ids'] = json_decode($item['category_ids']);
                 $item['attributes'] = json_decode($item['attributes']);
                 $item['choice_options'] = json_decode($item['choice_options']);
-                $item['add_ons'] = AddOn::whereIn('id', json_decode($item['add_ons']))->get();
+
+                $productModel = $item instanceof Product ? $item : null;
+                $legacyAddonIds = $productModel
+                    ? $productModel->legacyAddonIds()
+                    : (json_decode($item['add_ons'] ?? '[]', true) ?: []);
+                $item['add_ons'] = AddOn::whereIn('id', $legacyAddonIds)->get();
 
                 $item['variations'] = json_decode($item['variations'], true);
+                $item = self::mergeProductModifierTemplates($item);
 
                 if (count($item['translations'])) {
                     foreach ($item['translations'] as $translation) {
@@ -158,9 +164,6 @@ class Helpers
             $data['attributes'] = gettype($data['attributes']) != 'array' ? json_decode($data['attributes']) : $data['attributes'];
             $data['choice_options'] = gettype($data['choice_options']) != 'array' ? json_decode($data['choice_options']) : $data['choice_options'];
 
-            //$data['add_ons'] = AddOn::whereIn('id', $addon_ids)->get();
-            //$data['variations'] = json_decode($data['variations'], true);
-
             //variation server relate data formating
             $data['add_ons'] = AddOn::whereIn('id', $addon_ids)->get()->toArray();
             $data['variations'] = gettype($data['variations']) == 'array' ? $data['variations'] : json_decode($data['variations'], true);
@@ -174,6 +177,83 @@ class Helpers
                     if ($translation->key == 'description') {
                         $data['description'] = $translation->value;
                     }
+                }
+            }
+
+            $data = self::mergeProductModifierTemplates($data);
+        }
+
+        return $data;
+    }
+
+    /**
+     * Merge reusable modifier templates into API product payload.
+     * Templates are exposed as variation groups for the customer app.
+     */
+    public static function mergeProductModifierTemplates($data)
+    {
+        $productId = $data instanceof Product ? $data->id : ($data['id'] ?? null);
+        if (!$productId) {
+            return $data;
+        }
+
+        $product = $data instanceof Product && $data->relationLoaded('modifierTemplates')
+            ? $data
+            : Product::with([
+                'modifierTemplates' => function ($query) {
+                    $query->where('modifier_templates.is_active', 1)
+                        ->wherePivot('is_active', 1)
+                        ->orderBy('product_modifier_template.sort_order');
+                },
+                'modifierTemplates.items' => function ($query) {
+                    $query->where('is_active', 1)->orderBy('sort_order');
+                },
+                'modifierTemplates.items.addon',
+                'branch_product',
+            ])->find($productId);
+
+        if (!$product) {
+            return $data;
+        }
+
+        $templateVariations = $product->modifierTemplatesAsVariations();
+        if (count($templateVariations) === 0) {
+            return $data;
+        }
+
+        $existingVariations = $data instanceof Product
+            ? (is_array($data->variations) ? $data->variations : json_decode($data->variations ?? '[]', true))
+            : ($data['variations'] ?? []);
+        $existingVariations = is_array($existingVariations) ? $existingVariations : [];
+        $mergedVariations = array_merge($existingVariations, $templateVariations);
+
+        if ($data instanceof Product) {
+            $data->setAttribute('variations', $mergedVariations);
+
+            if ($data->branch_product) {
+                $branchVariations = is_array($data->branch_product->variations)
+                    ? $data->branch_product->variations
+                    : json_decode($data->branch_product->variations ?? '[]', true);
+                $branchVariations = is_array($branchVariations) ? $branchVariations : [];
+                $data->branch_product->variations = array_merge($branchVariations, $templateVariations);
+            }
+        } else {
+            $data['variations'] = $mergedVariations;
+
+            if (!empty($data['branch_product'])) {
+                $branchProduct = $data['branch_product'];
+                if (is_array($branchProduct)) {
+                    $branchVariations = is_array($branchProduct['variations'] ?? null)
+                        ? $branchProduct['variations']
+                        : json_decode($branchProduct['variations'] ?? '[]', true);
+                    $branchVariations = is_array($branchVariations) ? $branchVariations : [];
+                    $data['branch_product']['variations'] = array_merge($branchVariations, $templateVariations);
+                } elseif (is_object($branchProduct) && isset($branchProduct->variations)) {
+                    $branchVariations = is_array($branchProduct->variations)
+                        ? $branchProduct->variations
+                        : json_decode($branchProduct->variations ?? '[]', true);
+                    $branchVariations = is_array($branchVariations) ? $branchVariations : [];
+                    $branchProduct->variations = array_merge($branchVariations, $templateVariations);
                 }
             }
         }

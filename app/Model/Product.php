@@ -183,13 +183,19 @@ class Product extends Model
         return null;
     }
 
+    public function legacyAddonIds(): array
+    {
+        $legacyIds = json_decode($this->add_ons ?? '[]', true) ?: [];
+        return array_values(array_unique(array_map('intval', $legacyIds)));
+    }
+
     public function resolvedAddonIds(): array
     {
         $templateAddonIds = [];
 
         if ($this->relationLoaded('modifierTemplates')) {
             foreach ($this->modifierTemplates as $template) {
-                if ($template->relationLoaded('items')) {
+                if (($template->is_active ?? 1) && ($template->pivot->is_active ?? 1) && $template->relationLoaded('items')) {
                     foreach ($template->items as $item) {
                         if (($item->is_active ?? 1) && !empty($item->add_on_id)) {
                             $templateAddonIds[] = (int) $item->add_on_id;
@@ -212,8 +218,63 @@ class Product extends Model
             return array_values(array_unique($templateAddonIds));
         }
 
-        $legacyIds = json_decode($this->add_ons ?? '[]', true) ?: [];
-        return array_values(array_unique(array_map('intval', $legacyIds)));
+        return $this->legacyAddonIds();
+    }
+
+    /**
+     * Expose attached modifier templates as product variations for customer app UI.
+     */
+    public function modifierTemplatesAsVariations(): array
+    {
+        $templates = $this->relationLoaded('modifierTemplates')
+            ? $this->modifierTemplates
+            : $this->modifierTemplates()
+                ->where('modifier_templates.is_active', 1)
+                ->wherePivot('is_active', 1)
+                ->orderBy('product_modifier_template.sort_order')
+                ->with(['items' => function ($query) {
+                    $query->where('is_active', 1)->orderBy('sort_order');
+                }, 'items.addon'])
+                ->get();
+
+        $variations = [];
+        foreach ($templates as $template) {
+            if (!($template->is_active ?? 1) || !($template->pivot->is_active ?? 1)) {
+                continue;
+            }
+
+            $values = [];
+            $items = $template->relationLoaded('items') ? $template->items : $template->items()->where('is_active', 1)->orderBy('sort_order')->with('addon')->get();
+            foreach ($items as $item) {
+                if (!($item->is_active ?? 1) || !$item->addon) {
+                    continue;
+                }
+                $values[] = [
+                    'label' => $item->addon->name,
+                    'optionPrice' => (float) $item->addon->price,
+                ];
+            }
+
+            if (count($values) === 0) {
+                continue;
+            }
+
+            $maxSelect = (int) $template->max_select;
+            if ($template->selection_type === 'single') {
+                $maxSelect = 1;
+            }
+
+            $variations[] = [
+                'name' => $template->name,
+                'type' => $template->selection_type,
+                'min' => (int) $template->min_select,
+                'max' => $maxSelect,
+                'required' => ($template->is_required ?? 0) ? 'on' : 'off',
+                'values' => $values,
+            ];
+        }
+
+        return $variations;
     }
 
     public function resolvedAddons(): Collection

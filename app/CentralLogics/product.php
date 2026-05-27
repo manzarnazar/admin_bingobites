@@ -14,7 +14,20 @@ class ProductLogic
     {
         return Product::active()->branchProductAvailability()
             ->withCount('reviews')
-            ->with(['rating', 'reviews', 'branch_product'])
+            ->with([
+                'rating',
+                'reviews',
+                'branch_product',
+                'modifierTemplates' => function ($query) {
+                    $query->where('modifier_templates.is_active', 1)
+                        ->wherePivot('is_active', 1)
+                        ->orderBy('product_modifier_template.sort_order');
+                },
+                'modifierTemplates.items' => function ($query) {
+                    $query->where('is_active', 1)->orderBy('sort_order');
+                },
+                'modifierTemplates.items.addon',
+            ])
             ->where('id', $id)
             ->first();
     }
