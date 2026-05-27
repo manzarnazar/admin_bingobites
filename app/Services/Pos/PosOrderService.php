@@ -110,8 +110,15 @@ class PosOrderService
             }
 
             $price = $c['price'];
+            $allowedAddOnIds = $product->resolvedAddonIds();
+            $filteredAddOnIds = collect($c['add_ons'] ?? [])
+                ->map(fn($id) => (int) $id)
+                ->filter(fn($id) => in_array($id, $allowedAddOnIds, true))
+                ->values()
+                ->toArray();
+
             $product = Helpers::product_data_formatting($product);
-            $addonData = Helpers::calculate_addon_price(AddOn::whereIn('id', $c['add_ons'] ?? [])->get(), $c['add_on_qtys'] ?? []);
+            $addonData = Helpers::calculate_addon_price(AddOn::whereIn('id', $filteredAddOnIds)->get(), $c['add_on_qtys'] ?? []);
 
             $addOnQtys = $c['add_on_qtys'] ?? [];
             array_walk($addOnQtys, function (&$qty) {

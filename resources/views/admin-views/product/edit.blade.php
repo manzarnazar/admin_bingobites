@@ -496,6 +496,35 @@
                                     </div>
                                 </div>
                                 <div class="col-12">
+                                    <div class="outline-wrapper">
+                                        <div class="card h-100">
+                                            <div class="card-header">
+                                                <h4 class="mb-0 d-flex gap-2 align-items-center">
+                                                    <i class="tio-layers"></i>
+                                                    {{translate('Modifier Templates')}}
+                                                </h4>
+                                            </div>
+                                            <div class="card-body">
+                                                <div class="form-group mb-0">
+                                                    <label class="input-label">{{translate('Select_Modifier_Templates')}}</label>
+                                                    <small class="d-block text-muted mb-2">
+                                                        {{translate('Attach reusable single or multi selection groups to this product.')}}
+                                                    </small>
+                                                    <select name="modifier_template_ids[]" class="form-control cmn_focus" id="choose_modifier_templates" multiple="multiple" tabindex="20">
+                                                        @foreach($modifierTemplates as $modifierTemplate)
+                                                            <option
+                                                                value="{{$modifierTemplate->id}}"
+                                                                {{$product->modifierTemplates->pluck('id')->contains($modifierTemplate->id) ? 'selected' : ''}}>
+                                                                {{$modifierTemplate->name}} ({{translate($modifierTemplate->selection_type)}}: {{$modifierTemplate->min_select}}-{{$modifierTemplate->max_select}})
+                                                            </option>
+                                                        @endforeach
+                                                    </select>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-12">
                                     <div class="tags_wrapper">
                                         <div class="outline-wrapper">
                                             <div class="card h-100 bg-animate">
@@ -521,7 +550,7 @@
                                                 <div class="card-body">
                                                     <div class="row g-2">
                                                         <div class="col-12">
-                                                            <a href="javascript:void(0)" class="cmn_focus rounded" tabindex="20">
+                                                            <a href="javascript:void(0)" class="cmn_focus rounded" tabindex="21">
                                                                 <label class="input-label">{{translate('search_tag')}}</label>
                                                                 <input type="text" class="form-control" name="tags" placeholder="Enter tags" value="@foreach($product->tags as $c) {{$c->tag.','}} @endforeach" data-role="tagsinput">
                                                             </a>
@@ -540,7 +569,7 @@
                                                 <div class="d-flex gap-3 align-items-center">
                                                     <h5>{{translate('Recommended')}}</h5>
                                                     <label class="switcher rounded-pill cmn_focus-shadow">
-                                                        <input class="switcher_input" type="checkbox" name="is_recommended" tabindex="21" {{$product->is_recommended == 1? 'checked' : ''}} >
+                                                        <input class="switcher_input" type="checkbox" name="is_recommended" tabindex="22" {{$product->is_recommended == 1? 'checked' : ''}} >
                                                         <span class="switcher_control"></span>
                                                     </label>
                                                 </div>
@@ -576,7 +605,7 @@
                                                         <div class="col-12">
                                                             <div class="">
                                                                 <label class="input-label">{{translate('select cuisine')}}</label>
-                                                                <select name="cuisines[]" class="form-control js-select2-custom cmn_focus" tabindex="22" multiple>
+                                                                <select name="cuisines[]" class="form-control js-select2-custom cmn_focus" tabindex="23" multiple>
                                                                     <option value="" disabled>---{{translate('select cuisine')}}---</option>
                                                                     @foreach($cuisines as $cuisine)
                                                                         <option value="{{$cuisine['id']}}" {{ $product->cuisines->pluck('id')->contains($cuisine['id']) ? 'selected' : '' }}>{{$cuisine['name']}}</option>
@@ -634,7 +663,7 @@
                                             </div>
                                         </div>
                                         <div class="mt-2">
-                                            <button type="button" class="btn btn-outline-success cmn_focus" tabindex="23" id="add_new_option_button">{{translate('Add_New_Variation')}}</button>
+                                        <button type="button" class="btn btn-outline-success cmn_focus" tabindex="24" id="add_new_option_button">{{translate('Add_New_Variation')}}</button>
                                         </div>
                                     </div>
                                 </div>
@@ -643,8 +672,8 @@
                     </div>
 
                     <div class="d-flex justify-content-end gap-3 mt-4">
-                        <button type="reset" class="btn btn-secondary cmn_focus" tabindex="24">{{translate('reset')}}</button>
-                        <button type="submit" class="btn btn-primary cmn_focus" tabindex="25">{{translate('update')}}</button>
+                        <button type="reset" class="btn btn-secondary cmn_focus" tabindex="25">{{translate('reset')}}</button>
+                        <button type="submit" class="btn btn-primary cmn_focus" tabindex="26">{{translate('update')}}</button>
                     </div>
                 </form>
             </div>
@@ -697,6 +726,10 @@
         //Select 2
         $("#choose_addons").select2({
             placeholder: "Select Addons",
+            allowClear: true
+        });
+        $("#choose_modifier_templates").select2({
+            placeholder: "Select Modifier Templates",
             allowClear: true
         });
        /* $("#choice_attributes").select2({

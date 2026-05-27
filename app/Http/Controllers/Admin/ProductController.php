@@ -9,6 +9,7 @@ use App\Model\Product;
 use App\Model\ProductByBranch;
 use App\Model\Review;
 use App\Model\Tag;
+use App\Model\ModifierTemplate;
 use App\Model\Translation;
 use App\Models\Cuisine;
 use Box\Spout\Common\Exception\InvalidArgumentException;
@@ -36,6 +37,7 @@ class ProductController extends Controller
         private Category        $category,
         private ProductByBranch $productByBranch,
         private Translation     $translation,
+        private ModifierTemplate $modifierTemplate,
         private Cuisine         $cuisine,
     )
     {}
@@ -99,7 +101,8 @@ class ProductController extends Controller
     {
         $categories = $this->category->where(['position' => 0])->get();
         $cuisines = $this->cuisine::active()->orderBy('priority', 'ASC')->get();
-        return view('admin-views.product.index', compact('categories', 'cuisines'));
+        $modifierTemplates = $this->modifierTemplate->where('is_active', 1)->orderBy('name')->get();
+        return view('admin-views.product.index', compact('categories', 'cuisines', 'modifierTemplates'));
     }
 
     /**
@@ -182,6 +185,8 @@ class ProductController extends Controller
             'tax_type' => 'required',
             'stock_type' => 'required|in:unlimited,daily,fixed',
             'product_stock' => 'required_if:stock_type,daily,fixed',
+            'modifier_template_ids' => 'nullable|array',
+            'modifier_template_ids.*' => 'exists:modifier_templates,id',
         ], [
             'name.required' => translate('Product name is required!'),
             'name.unique' => translate('Product name has been taken.'),
@@ -317,6 +322,7 @@ class ProductController extends Controller
         $product->status = $request->status == 'on' ? 1 : 0;
         $product->is_recommended = $request->is_recommended == 'on' ? 1 : 0;
         $product->save();
+        $this->syncModifierTemplates($product, $request->modifier_template_ids ?? []);
 
         $product->tags()->sync($tagIds);
         $product->cuisines()->sync($request->cuisines);
@@ -371,12 +377,13 @@ class ProductController extends Controller
      */
     public function edit($id): View|Factory|Application
     {
-        $product = $this->product->withoutGlobalScopes()->with(['translations', 'main_branch_product', 'cuisines'])->find($id);
+        $product = $this->product->withoutGlobalScopes()->with(['translations', 'main_branch_product', 'cuisines', 'modifierTemplates'])->find($id);
         $product_category = json_decode($product->category_ids);
         $categories = $this->category->where(['parent_id' => 0])->get();
         $cuisines = $this->cuisine::active()->orderBy('priority', 'ASC')->get();
+        $modifierTemplates = $this->modifierTemplate->where('is_active', 1)->orderBy('name')->get();
 
-        return view('admin-views.product.edit', compact('product', 'product_category', 'categories', 'cuisines'));
+        return view('admin-views.product.edit', compact('product', 'product_category', 'categories', 'cuisines', 'modifierTemplates'));
     }
 
     /**
@@ -426,6 +433,8 @@ class ProductController extends Controller
             'tax_type' => 'required',
             'stock_type' => 'required|in:unlimited,daily,fixed',
             'product_stock' => 'required_if:stock_type,daily,fixed',
+            'modifier_template_ids' => 'nullable|array',
+            'modifier_template_ids.*' => 'exists:modifier_templates,id',
         ], [
             'name.required' => translate('Product name is required!'),
             'category_id.required' => translate('category  is required!'),
@@ -590,6 +599,7 @@ class ProductController extends Controller
         $product->status = $request->status == 'on' ? 1 : 0;
         $product->is_recommended = $request->is_recommended == 'on' ? 1 : 0;
         $product->save();
+        $this->syncModifierTemplates($product, $request->modifier_template_ids ?? []);
 
         $product->tags()->sync($tagIds);
         $product->cuisines()->sync($request->cuisines);
@@ -959,5 +969,18 @@ class ProductController extends Controller
 
         Toastr::success(translate('updated successfully!'));
         return back();
+    }
+
+    private function syncModifierTemplates(Product $product, array $modifierTemplateIds = []): void
+    {
+        $syncData = [];
+        foreach (array_values(array_unique($modifierTemplateIds)) as $index => $templateId) {
+            $syncData[$templateId] = [
+                'sort_order' => $index,
+                'is_active' => 1,
+            ];
+        }
+
+        $product->modifierTemplates()->sync($syncData);
     }
 }

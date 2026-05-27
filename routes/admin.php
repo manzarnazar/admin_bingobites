@@ -40,6 +40,7 @@ use App\Http\Controllers\Admin\WalletBonusController;
 use App\Http\Controllers\Admin\LoginSetupController;
 use App\Http\Controllers\Admin\DeliveryChargeSetupController;
 use App\Http\Controllers\Admin\AISettingsController;
+use App\Http\Controllers\Admin\ModifierTemplateController;
 
 Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
     Route::get('lang/{locale}', [LanguageController::class, 'lang'])->name('lang');
@@ -161,6 +162,15 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
             Route::get('edit/{id}', [AddonController::class, 'edit'])->name('edit');
             Route::post('update/{id}', [AddonController::class, 'update'])->name('update');
             Route::delete('delete/{id}', [AddonController::class, 'delete'])->name('delete');
+        });
+
+        Route::group(['prefix' => 'modifier-template', 'as' => 'modifier-template.', 'middleware' => ['module:product_management']], function () {
+            Route::get('list', [ModifierTemplateController::class, 'index'])->name('index');
+            Route::post('store', [ModifierTemplateController::class, 'store'])->name('store');
+            Route::get('edit/{id}', [ModifierTemplateController::class, 'edit'])->name('edit');
+            Route::post('update/{id}', [ModifierTemplateController::class, 'update'])->name('update');
+            Route::delete('delete/{id}', [ModifierTemplateController::class, 'delete'])->name('delete');
+            Route::get('status/{id}/{status}', [ModifierTemplateController::class, 'status'])->name('status');
         });
 
         Route::group(['prefix' => 'delivery-man', 'as' => 'delivery-man.', 'middleware' => ['module:user_management']], function () {

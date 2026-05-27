@@ -6,6 +6,7 @@ use App\CentralLogics\Helpers;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class AddOn extends Model
 {
@@ -23,6 +24,11 @@ class AddOn extends Model
     public function translations(): MorphMany
     {
         return $this->morphMany('App\Model\Translation', 'translationable');
+    }
+
+    public function modifierTemplateItems(): HasMany
+    {
+        return $this->hasMany(ModifierTemplateItem::class, 'add_on_id');
     }
 
     public function getNameAttribute($name)

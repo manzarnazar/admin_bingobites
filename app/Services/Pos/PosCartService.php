@@ -117,7 +117,7 @@ class PosCartService
 
     public function addToCart(int $adminId, array $requestData): array
     {
-        $product = Product::findOrFail($requestData['id']);
+        $product = Product::with('modifierTemplates.items')->findOrFail($requestData['id']);
         $branchId = $this->branchId($adminId);
 
         $branchProduct = ProductByBranch::where([
@@ -186,7 +186,12 @@ class PosCartService
 
         $addonPrice = 0;
         $addonTotalTax = 0;
-        $addOnIds = $requestData['addon_id'] ?? [];
+        $allowedAddOnIds = $product->resolvedAddonIds();
+        $addOnIds = collect($requestData['addon_id'] ?? [])
+            ->map(fn($id) => (int) $id)
+            ->filter(fn($id) => in_array($id, $allowedAddOnIds, true))
+            ->values()
+            ->toArray();
         $addOnQtys = [];
         $addOnPrices = [];
         $addOnTax = [];
@@ -279,14 +284,18 @@ class PosCartService
 
     public function variantPrice(int $adminId, array $requestData): array
     {
-        $product = Product::findOrFail($requestData['id']);
+        $product = Product::with('modifierTemplates.items')->findOrFail($requestData['id']);
         $branchId = $this->branchId($adminId);
         $price = $product->price;
         $addonPrice = 0;
         $quantity = (int) ($requestData['quantity'] ?? 1);
+        $allowedAddOnIds = $product->resolvedAddonIds();
 
         if (!empty($requestData['addon_id'])) {
             foreach ($requestData['addon_id'] as $addonId) {
+                if (!in_array((int) $addonId, $allowedAddOnIds, true)) {
+                    continue;
+                }
                 $addonPrice += ($requestData['addon-price' . $addonId] ?? 0) * ($requestData['addon-quantity' . $addonId] ?? 1);
             }
         }

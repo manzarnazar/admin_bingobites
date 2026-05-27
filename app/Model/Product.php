@@ -14,6 +14,7 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Collection;
 
 class Product extends Model
 {
@@ -83,6 +84,13 @@ class Product extends Model
     public function tags(): BelongsToMany
     {
         return $this->belongsToMany(Tag::class);
+    }
+
+    public function modifierTemplates(): BelongsToMany
+    {
+        return $this->belongsToMany(ModifierTemplate::class, 'product_modifier_template')
+            ->withPivot(['sort_order', 'is_active'])
+            ->withTimestamps();
     }
 
     public function product_by_branch(): HasMany
@@ -173,6 +181,48 @@ class Product extends Model
         }
 
         return null;
+    }
+
+    public function resolvedAddonIds(): array
+    {
+        $templateAddonIds = [];
+
+        if ($this->relationLoaded('modifierTemplates')) {
+            foreach ($this->modifierTemplates as $template) {
+                if ($template->relationLoaded('items')) {
+                    foreach ($template->items as $item) {
+                        if (($item->is_active ?? 1) && !empty($item->add_on_id)) {
+                            $templateAddonIds[] = (int) $item->add_on_id;
+                        }
+                    }
+                }
+            }
+        } else {
+            $templateAddonIds = $this->modifierTemplates()
+                ->wherePivot('is_active', 1)
+                ->where('modifier_templates.is_active', 1)
+                ->join('modifier_template_items', 'modifier_template_items.modifier_template_id', '=', 'modifier_templates.id')
+                ->where('modifier_template_items.is_active', 1)
+                ->pluck('modifier_template_items.add_on_id')
+                ->map(fn($id) => (int) $id)
+                ->toArray();
+        }
+
+        if (count($templateAddonIds) > 0) {
+            return array_values(array_unique($templateAddonIds));
+        }
+
+        $legacyIds = json_decode($this->add_ons ?? '[]', true) ?: [];
+        return array_values(array_unique(array_map('intval', $legacyIds)));
+    }
+
+    public function resolvedAddons(): Collection
+    {
+        $addonIds = $this->resolvedAddonIds();
+        if (empty($addonIds)) {
+            return collect();
+        }
+        return AddOn::whereIn('id', $addonIds)->get();
     }
 
     protected static function booted(): void

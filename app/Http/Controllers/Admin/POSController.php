@@ -108,7 +108,12 @@ class POSController extends Controller
      */
     public function quick_view(Request $request): JsonResponse
     {
-        $product = $this->product->findOrFail($request->product_id);
+        $product = $this->product->with(['modifierTemplates' => function ($query) {
+            $query->where('modifier_templates.is_active', 1)
+                ->orderBy('product_modifier_template.sort_order');
+        }, 'modifierTemplates.items' => function ($query) {
+            $query->where('is_active', 1)->orderBy('sort_order');
+        }, 'modifierTemplates.items.addon'])->findOrFail($request->product_id);
 
         return response()->json([
             'success' => 1,
@@ -124,13 +129,18 @@ class POSController extends Controller
      */
     public function variant_price(Request $request): array
     {
-        $product = $this->product->find($request->id);
+        $product = $this->product->with('modifierTemplates.items')->find($request->id);
 
         $price = $product->price;
         $addon_price = 0;
 
+        $allowedAddOnIds = $product ? $product->resolvedAddonIds() : [];
+
         if ($request['addon_id']) {
             foreach ($request['addon_id'] as $id) {
+                if (!in_array((int) $id, $allowedAddOnIds, true)) {
+                    continue;
+                }
                 $addon_price += $request['addon-price' . $id] * $request['addon-quantity' . $id];
             }
         }
@@ -267,7 +277,7 @@ class POSController extends Controller
      */
     public function addToCart(Request $request): JsonResponse
     {
-        $product = $this->product->find($request->id);
+        $product = $this->product->with('modifierTemplates.items')->find($request->id);
 
         $data = array();
         $data['id'] = $product->id;
@@ -351,10 +361,16 @@ class POSController extends Controller
         $data['add_on_prices'] = [];
         $data['add_on_tax'] = [];
 
+        $allowedAddOnIds = $product ? $product->resolvedAddonIds() : [];
+        $selectedAddOnIds = [];
         if ($request['addon_id']) {
             foreach ($request['addon_id'] as $id) {
+                if (!in_array((int) $id, $allowedAddOnIds, true)) {
+                    continue;
+                }
                 $addon_price += $request['addon-price' . $id] * $request['addon-quantity' . $id];
                 $data['add_on_qtys'][] = $request['addon-quantity' . $id];
+                $selectedAddOnIds[] = (int) $id;
 
                 $add_on = AddOn::find($id);
                 $data['add_on_prices'][] = $add_on['price'];
@@ -362,7 +378,7 @@ class POSController extends Controller
                 $addon_total_tax += (($add_on['price'] * $add_on['tax']/100) * $request['addon-quantity' . $id]);
                 $data['add_on_tax'][] = $add_on_tax;
             }
-            $data['add_ons'] = $request['addon_id'];
+            $data['add_ons'] = $selectedAddOnIds;
         }
 
         $data['addon_price'] = $addon_price;

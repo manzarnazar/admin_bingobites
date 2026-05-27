@@ -158,46 +158,108 @@
                         @endif
                     </div>
 
-                    @php($add_ons = json_decode($product->add_ons))
-                        @if(count($add_ons)>0)
-                           <div class="p-3 shadow rounded-10">
+                    @php($hasTemplateModifiers = $product->modifierTemplates->count() > 0)
+                    @php($legacyAddons = json_decode($product->add_ons ?? '[]', true) ?: [])
+                    @if($hasTemplateModifiers || count($legacyAddons) > 0)
+                        <div class="p-3 shadow rounded-10">
                             <h3>{{ translate('addon') }}</h3>
-                            <div class="d-flex flex-column gap-2 addon-wrap">
-                                @foreach (\App\Model\AddOn::whereIn('id', $add_ons)->get() as $key => $add_on)
-                                    <div class="addon-item d-flex gap-3 justify-content-between align-items-center">
-                                        <input type="hidden" name="addon-price{{ $add_on->id }}" value="{{$add_on->price}}">
-                                        <div class="d-flex align-items-center gap-2">
-                                            <input class="addon-chek" type="checkbox"
-                                            id="addon{{ $key }}" onchange="addon_quantity_input_toggle(event)"
-                                            name="addon_id[]" value="{{ $add_on->id }}"
-                                            autocomplete="off">
-                                            <label class="user-select-none mb-0 text-black-50 fw-medium addon_label"
-                                                for="addon{{ $key }}">{{ $add_on->name }}
-                                            </label>
+                            <div class="d-flex flex-column gap-3 addon-wrap">
+                                @if($hasTemplateModifiers)
+                                    @foreach($product->modifierTemplates as $templateIndex => $modifierTemplate)
+                                        @php($templateItems = $modifierTemplate->items->where('is_active', 1))
+                                        @if($templateItems->count() > 0)
+                                            <div class="border rounded p-2">
+                                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                                    <div class="font-weight-semibold">{{$modifierTemplate->name}}</div>
+                                                    <small class="text-muted">
+                                                        {{translate($modifierTemplate->selection_type)}} ({{$modifierTemplate->min_select}}-{{$modifierTemplate->max_select}})
+                                                    </small>
+                                                </div>
+                                                <div class="d-flex flex-column gap-2">
+                                                    @foreach($templateItems as $itemIndex => $item)
+                                                        @php($add_on = $item->addon)
+                                                        @if($add_on)
+                                                            <div class="addon-item d-flex gap-3 justify-content-between align-items-center" data-template-id="{{$modifierTemplate->id}}">
+                                                                <input type="hidden" name="addon-price{{ $add_on->id }}" value="{{$add_on->price}}">
+                                                                <div class="d-flex align-items-center gap-2">
+                                                                    <input class="addon-chek"
+                                                                           type="checkbox"
+                                                                           id="template-addon{{$modifierTemplate->id}}-{{$itemIndex}}"
+                                                                           data-template-id="{{$modifierTemplate->id}}"
+                                                                           data-selection-type="{{$modifierTemplate->selection_type}}"
+                                                                           onchange="addon_quantity_input_toggle(event)"
+                                                                           name="addon_id[]"
+                                                                           value="{{ $add_on->id }}"
+                                                                           autocomplete="off">
+                                                                    <label class="user-select-none mb-0 text-black-50 fw-medium addon_label"
+                                                                           for="template-addon{{$modifierTemplate->id}}-{{$itemIndex}}">
+                                                                        {{ $add_on->name }}
+                                                                    </label>
+                                                                </div>
+                                                                <div class="d-flex align-items-baseline gap-3 flex-wrap">
+                                                                    <span class="user-select-none mb-0 text-black-50 fw-medium fz-12 addon_label">
+                                                                        {{ \App\CentralLogics\Helpers::set_symbol($add_on->price) }}
+                                                                    </span>
+                                                                    <label class="input-group addon-quantity-input addon-quantity-input_custom shadow bg-white rounded mb-0 d-none align-items-center w-auto fz-12"
+                                                                           for="template-addon{{$modifierTemplate->id}}-{{$itemIndex}}">
+                                                                        <button class="btn btn-sm h-100 text-dark pl-1 py-1 pr-0" type="button"
+                                                                                onclick="this.parentNode.querySelector('input[type=number]').stepDown(), getVariantPrice()">
+                                                                            <i class="tio-remove font-weight-bold"></i>
+                                                                        </button>
+                                                                        <input type="number"
+                                                                               name="addon-quantity{{ $add_on->id }}"
+                                                                               class="text-center border-0 h-100"
+                                                                               placeholder="1" value="1" min="1" max="100" readonly>
+                                                                        <button class="btn btn-sm h-100 text-dark pr-1 py-1 pl-0" type="button"
+                                                                                onclick="this.parentNode.querySelector('input[type=number]').stepUp(), getVariantPrice()">
+                                                                            <i class="tio-add font-weight-bold"></i>
+                                                                        </button>
+                                                                    </label>
+                                                                </div>
+                                                            </div>
+                                                        @endif
+                                                    @endforeach
+                                                </div>
+                                            </div>
+                                        @endif
+                                    @endforeach
+                                @else
+                                    @foreach (\App\Model\AddOn::whereIn('id', $legacyAddons)->get() as $key => $add_on)
+                                        <div class="addon-item d-flex gap-3 justify-content-between align-items-center">
+                                            <input type="hidden" name="addon-price{{ $add_on->id }}" value="{{$add_on->price}}">
+                                            <div class="d-flex align-items-center gap-2">
+                                                <input class="addon-chek" type="checkbox"
+                                                       id="addon{{ $key }}" onchange="addon_quantity_input_toggle(event)"
+                                                       name="addon_id[]" value="{{ $add_on->id }}"
+                                                       autocomplete="off">
+                                                <label class="user-select-none mb-0 text-black-50 fw-medium addon_label"
+                                                       for="addon{{ $key }}">{{ $add_on->name }}</label>
+                                            </div>
+                                            <div class="d-flex align-items-baseline gap-3 flex-wrap">
+                                                <span class="user-select-none mb-0 text-black-50 fw-medium fz-12 addon_label">
+                                                    {{ \App\CentralLogics\Helpers::set_symbol($add_on->price) }}
+                                                </span>
+                                                <label class="input-group addon-quantity-input addon-quantity-input_custom shadow bg-white rounded mb-0 d-none align-items-center w-auto fz-12"
+                                                       for="addon{{ $key }}">
+                                                    <button class="btn btn-sm h-100 text-dark pl-1 py-1 pr-0" type="button"
+                                                            onclick="this.parentNode.querySelector('input[type=number]').stepDown(), getVariantPrice()">
+                                                        <i class="tio-remove font-weight-bold"></i>
+                                                    </button>
+                                                    <input type="number" name="addon-quantity{{ $add_on->id }}"
+                                                           class="text-center border-0 h-100"
+                                                           placeholder="1" value="1" min="1" max="100" readonly>
+                                                    <button class="btn btn-sm h-100 text-dark pr-1 py-1 pl-0" type="button"
+                                                            onclick="this.parentNode.querySelector('input[type=number]').stepUp(), getVariantPrice()">
+                                                        <i class="tio-add font-weight-bold"></i>
+                                                    </button>
+                                                </label>
+                                            </div>
                                         </div>
-                                    <div class="d-flex align-items-baseline gap-3 flex-wrap">
-                                            <span class="user-select-none mb-0 text-black-50 fw-medium fz-12 addon_label"
-                                                for="addon{{ $key }}">
-                                                {{ \App\CentralLogics\Helpers::set_symbol($add_on->price) }}
-                                            </span>
-                                            <label class="input-group addon-quantity-input addon-quantity-input_custom shadow bg-white rounded mb-0 d-none align-items-center w-auto fz-12"
-                                                for="addon{{ $key }}">
-                                                <button class="btn btn-sm h-100 text-dark pl-1 py-1 pr-0" type="button"
-                                                        onclick="this.parentNode.querySelector('input[type=number]').stepDown(), getVariantPrice()">
-                                                    <i class="tio-remove  font-weight-bold"></i></button>
-                                                <input type="number" name="addon-quantity{{ $add_on->id }}"
-                                                    class="text-center border-0 h-100"
-                                                    placeholder="1" value="1" min="1" max="100" readonly>
-                                                <button class="btn btn-sm h-100 text-dark pr-1 py-1 pl-0" type="button"
-                                                        onclick="this.parentNode.querySelector('input[type=number]').stepUp(), getVariantPrice()">
-                                                    <i class="tio-add  font-weight-bold"></i></button>
-                                            </label>
-                                    </div>
-                                    </div>
-                                @endforeach
+                                    @endforeach
+                                @endif
                             </div>
-                           </div>
-                        @endif
+                        </div>
+                    @endif
                 </div>
 
                 {{-- static button --}}
@@ -300,6 +362,18 @@
 
     function addon_quantity_input_toggle(event) {
         let checkbox = $(event.target);
+        let selectionType = checkbox.data('selection-type');
+        let templateId = checkbox.data('template-id');
+
+        if (checkbox.is(':checked') && selectionType === 'single' && templateId) {
+            $('.addon-chek[data-template-id="' + templateId + '"]').not(checkbox).each(function () {
+                if ($(this).is(':checked')) {
+                    $(this).prop('checked', false);
+                    addon_quantity_input_toggle({target: this});
+                }
+            });
+        }
+
         let quantityBox = checkbox.closest('.addon-item').find('.addon-quantity-input');
         let addonLabel = checkbox.closest('.addon-item').find('.addon_label');
 
