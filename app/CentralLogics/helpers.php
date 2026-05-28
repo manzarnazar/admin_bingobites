@@ -1206,9 +1206,13 @@ class Helpers
                     }
                 }
                 $displayAddonIds = array_values(array_unique(array_merge($productAddonIds, $selectedAddonIds)));
+                $productDetails = (array) ($detail['product_details'] ?? []);
                 if (!empty($displayAddonIds)) {
-                    $detail['product_details']['add_ons'] = AddOn::whereIn('id', $displayAddonIds)->get()->values();
+                    $productDetails['add_ons'] = AddOn::whereIn('id', $displayAddonIds)->get()->values()->all();
+                } elseif (!isset($productDetails['add_ons']) || !is_array($productDetails['add_ons'])) {
+                    $productDetails['add_ons'] = [];
                 }
+                $detail['product_details'] = $productDetails;
 
                 $product_availability = Product::where('id', $detail['product_id'])->first();
                 $detail['is_product_available'] = isset($product_availability) ? 1 : 0;
