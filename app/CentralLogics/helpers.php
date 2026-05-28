@@ -1178,6 +1178,23 @@ class Helpers
 
                 $detail['product_details'] = Helpers::product_formatter($detail['product_details']);
 
+                // Ensure addon name resolution works for kitchen/receipt clients:
+                // include all selected addon IDs in product_details.add_ons, even if
+                // the product snapshot did not contain template-derived addon IDs.
+                $selectedAddonIds = array_map('intval', (array) ($detail['add_on_ids'] ?? []));
+                $productAddonIds = [];
+                foreach ((array) ($detail['product_details']['add_ons'] ?? []) as $addonItem) {
+                    if (is_array($addonItem) && isset($addonItem['id'])) {
+                        $productAddonIds[] = (int) $addonItem['id'];
+                    } elseif (is_object($addonItem) && isset($addonItem->id)) {
+                        $productAddonIds[] = (int) $addonItem->id;
+                    }
+                }
+                $displayAddonIds = array_values(array_unique(array_merge($productAddonIds, $selectedAddonIds)));
+                if (!empty($displayAddonIds)) {
+                    $detail['product_details']['add_ons'] = AddOn::whereIn('id', $displayAddonIds)->get()->values();
+                }
+
                 $product_availability = Product::where('id', $detail['product_id'])->first();
                 $detail['is_product_available'] = isset($product_availability) ? 1 : 0;
             }
