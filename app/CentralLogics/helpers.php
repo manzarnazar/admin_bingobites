@@ -1041,18 +1041,22 @@ class Helpers
         }
 
         if (empty($normalizedIds) && !empty($selectedVariations)) {
-            $labels = self::extract_selected_variation_labels($selectedVariations);
-            foreach ($labels as $label) {
-                $normalizedLabel = mb_strtolower(trim((string) $label));
-                if (!isset($nameToAddonId[$normalizedLabel])) {
+            $labelsWithQty = self::extract_selected_variation_labels_with_qty($selectedVariations);
+            $qtyByAddonId = [];
+            foreach ($labelsWithQty as $labelData) {
+                $normalizedLabel = mb_strtolower(trim((string) ($labelData['label'] ?? '')));
+                if ($normalizedLabel === '' || !isset($nameToAddonId[$normalizedLabel])) {
                     continue;
                 }
+
                 $addonId = $nameToAddonId[$normalizedLabel];
-                if (in_array($addonId, $normalizedIds, true)) {
-                    continue;
-                }
-                $normalizedIds[] = $addonId;
-                $normalizedQtys[] = 1;
+                $qty = max(1, (int) ($labelData['qty'] ?? 1));
+                $qtyByAddonId[$addonId] = ($qtyByAddonId[$addonId] ?? 0) + $qty;
+            }
+
+            foreach ($qtyByAddonId as $addonId => $qty) {
+                $normalizedIds[] = (int) $addonId;
+                $normalizedQtys[] = (int) $qty;
             }
         }
 
@@ -1263,7 +1267,7 @@ class Helpers
             }
         }
 
-        return array_values(array_unique($labels));
+        return $labels;
     }
 
     private static function extract_selected_variation_labels_with_qty(array $variations): array
@@ -1296,7 +1300,19 @@ class Helpers
             }
         }
 
-        return $labels;
+        $aggregated = [];
+        foreach ($labels as $item) {
+            $lookup = mb_strtolower(trim((string) ($item['label'] ?? '')));
+            if ($lookup === '') {
+                continue;
+            }
+            if (!isset($aggregated[$lookup])) {
+                $aggregated[$lookup] = ['label' => (string) $item['label'], 'qty' => 0];
+            }
+            $aggregated[$lookup]['qty'] += max(1, (int) ($item['qty'] ?? 1));
+        }
+
+        return array_values($aggregated);
     }
 
     public static function product_formatter($product)
