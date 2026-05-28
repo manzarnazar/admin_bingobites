@@ -1181,7 +1181,22 @@ class Helpers
                 // Ensure addon name resolution works for kitchen/receipt clients:
                 // include all selected addon IDs in product_details.add_ons, even if
                 // the product snapshot did not contain template-derived addon IDs.
-                $selectedAddonIds = array_map('intval', (array) ($detail['add_on_ids'] ?? []));
+                $selectedAddonIds = [];
+                foreach ((array) ($detail['add_on_ids'] ?? []) as $selectedAddon) {
+                    if (is_numeric($selectedAddon)) {
+                        $selectedAddonIds[] = (int) $selectedAddon;
+                        continue;
+                    }
+
+                    if (is_array($selectedAddon) && isset($selectedAddon['id']) && is_numeric($selectedAddon['id'])) {
+                        $selectedAddonIds[] = (int) $selectedAddon['id'];
+                        continue;
+                    }
+
+                    if (is_object($selectedAddon) && isset($selectedAddon->id) && is_numeric($selectedAddon->id)) {
+                        $selectedAddonIds[] = (int) $selectedAddon->id;
+                    }
+                }
                 $productAddonIds = [];
                 foreach ((array) ($detail['product_details']['add_ons'] ?? []) as $addonItem) {
                     if (is_array($addonItem) && isset($addonItem['id'])) {
