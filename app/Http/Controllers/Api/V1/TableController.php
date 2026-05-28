@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\CentralLogics\Helpers;
 use App\Http\Controllers\Controller;
-use App\Model\AddOn;
 use App\Model\Notification;
 use App\Model\Order;
 use App\Model\OrderDetail;
@@ -169,27 +168,12 @@ class TableController extends Controller
 
                 $discount_on_product = Helpers::discount_calculate($discount_data, $price);
 
-                /*calculation for addon and addon tax start*/
-                $add_on_quantities = $c['add_on_qtys'];
-                $add_on_prices = [];
-                $add_on_taxes = [];
-
-                foreach($c['add_on_ids'] as $key =>$id){
-                    $addon = AddOn::find($id);
-                    $add_on_prices[] = $addon['price'];
-                    $add_on_taxes[] = ($addon['price']*$addon['tax'])/100;
-                }
-
-                $totalAddonTax = array_reduce(
-                    array_map(function ($a, $b) {
-                        return $a * $b;
-                    }, $add_on_quantities, $add_on_taxes),
-                    function ($carry, $item) {
-                        return $carry + $item;
-                    },
-                    0
+                $normalizedAddons = Helpers::normalize_order_addons(
+                    product: $product,
+                    selectedVariations: $c['variations'] ?? [],
+                    selectedAddonIds: $c['add_on_ids'] ?? [],
+                    selectedAddonQtys: $c['add_on_qtys'] ?? [],
                 );
-                /*calculation for addon and addon tax end*/
 
                 $order_d = [
                     'order_id' => $order->id,
@@ -202,11 +186,11 @@ class TableController extends Controller
                     'discount_type' => 'discount_on_product',
                     'variant' => json_encode($c['variant']),
                     'variation' => json_encode($variations),
-                    'add_on_ids' => json_encode($c['add_on_ids']),
-                    'add_on_qtys' => json_encode($c['add_on_qtys']),
-                    'add_on_prices' => json_encode($add_on_prices),
-                    'add_on_taxes' => json_encode($add_on_taxes),
-                    'add_on_tax_amount' => $totalAddonTax,
+                    'add_on_ids' => json_encode($normalizedAddons['add_on_ids']),
+                    'add_on_qtys' => json_encode($normalizedAddons['add_on_qtys']),
+                    'add_on_prices' => json_encode($normalizedAddons['add_on_prices']),
+                    'add_on_taxes' => json_encode($normalizedAddons['add_on_taxes']),
+                    'add_on_tax_amount' => $normalizedAddons['add_on_tax_amount'],
                     'created_at' => now(),
                     'updated_at' => now()
                 ];

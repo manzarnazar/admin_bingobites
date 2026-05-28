@@ -1006,6 +1006,86 @@ class Helpers
         return null;
     }
 
+    /**
+     * Normalize addon payload from explicit addon IDs or selected variation labels.
+     */
+    public static function normalize_order_addons(Product $product, array $selectedVariations = [], array $selectedAddonIds = [], array $selectedAddonQtys = []): array
+    {
+        $allowedAddons = $product->resolvedAddons()->keyBy('id');
+        $nameToAddonId = [];
+        foreach ($allowedAddons as $addon) {
+            $nameToAddonId[mb_strtolower(trim($addon->name))] = (int) $addon->id;
+        }
+
+        $normalizedIds = [];
+        $normalizedQtys = [];
+
+        if (!empty($selectedAddonIds)) {
+            foreach (array_values($selectedAddonIds) as $index => $addonId) {
+                $addonId = (int) $addonId;
+                if (!$allowedAddons->has($addonId)) {
+                    continue;
+                }
+
+                if (in_array($addonId, $normalizedIds, true)) {
+                    continue;
+                }
+
+                $qtyByIndex = isset($selectedAddonQtys[$index]) ? (int) $selectedAddonQtys[$index] : null;
+                $qtyById = isset($selectedAddonQtys[(string)$addonId]) ? (int) $selectedAddonQtys[(string)$addonId] : null;
+                $qty = max(1, $qtyByIndex ?? $qtyById ?? 1);
+
+                $normalizedIds[] = $addonId;
+                $normalizedQtys[] = $qty;
+            }
+        }
+
+        if (empty($normalizedIds) && !empty($selectedVariations)) {
+            $labels = self::extract_selected_variation_labels($selectedVariations);
+            foreach ($labels as $label) {
+                $normalizedLabel = mb_strtolower(trim((string) $label));
+                if (!isset($nameToAddonId[$normalizedLabel])) {
+                    continue;
+                }
+                $addonId = $nameToAddonId[$normalizedLabel];
+                if (in_array($addonId, $normalizedIds, true)) {
+                    continue;
+                }
+                $normalizedIds[] = $addonId;
+                $normalizedQtys[] = 1;
+            }
+        }
+
+        $normalizedPrices = [];
+        $normalizedTaxes = [];
+        $addonTaxAmount = 0;
+        $addonPriceAmount = 0;
+
+        foreach ($normalizedIds as $index => $addonId) {
+            $addon = $allowedAddons->get($addonId);
+            if (!$addon) {
+                continue;
+            }
+            $price = (float) $addon->price;
+            $tax = ($price * (float) $addon->tax) / 100;
+            $qty = (int) ($normalizedQtys[$index] ?? 1);
+
+            $normalizedPrices[] = $price;
+            $normalizedTaxes[] = $tax;
+            $addonTaxAmount += $tax * $qty;
+            $addonPriceAmount += $price * $qty;
+        }
+
+        return [
+            'add_on_ids' => $normalizedIds,
+            'add_on_qtys' => $normalizedQtys,
+            'add_on_prices' => $normalizedPrices,
+            'add_on_taxes' => $normalizedTaxes,
+            'add_on_tax_amount' => self::set_price($addonTaxAmount),
+            'total_add_on_price' => self::set_price($addonPriceAmount),
+        ];
+    }
+
 
     public static function get_default_language()
     {
@@ -1056,6 +1136,42 @@ class Helpers
                 $detail['add_on_prices'] = gettype($detail['add_on_prices']) != 'array' ? (array) json_decode($detail['add_on_prices'], true) : (array) $detail['add_on_prices'];
                 $detail['add_on_taxes'] = gettype($detail['add_on_taxes']) != 'array' ? (array) json_decode($detail['add_on_taxes'], true) : (array) $detail['add_on_taxes'];
 
+                if (empty($detail['add_on_ids']) && !empty($detail['variation']) && !empty($detail['product_details']['add_ons'])) {
+                    $addonIds = gettype($detail['product_details']['add_ons']) != 'array'
+                        ? (array) json_decode($detail['product_details']['add_ons'], true)
+                        : (array) $detail['product_details']['add_ons'];
+                    $addons = AddOn::whereIn('id', $addonIds)->get()->keyBy('id');
+                    $nameToAddon = [];
+                    foreach ($addons as $addon) {
+                        $nameToAddon[mb_strtolower(trim($addon->name))] = $addon;
+                    }
+
+                    $selectedLabels = self::extract_selected_variation_labels($detail['variation']);
+                    $fallbackIds = [];
+                    $fallbackQtys = [];
+                    $fallbackPrices = [];
+                    $fallbackTaxes = [];
+                    foreach ($selectedLabels as $label) {
+                        $lookup = mb_strtolower(trim((string) $label));
+                        if (!isset($nameToAddon[$lookup])) {
+                            continue;
+                        }
+                        $addon = $nameToAddon[$lookup];
+                        if (in_array($addon->id, $fallbackIds, true)) {
+                            continue;
+                        }
+                        $fallbackIds[] = (int) $addon->id;
+                        $fallbackQtys[] = 1;
+                        $fallbackPrices[] = (float) $addon->price;
+                        $fallbackTaxes[] = ((float) $addon->price * (float) $addon->tax) / 100;
+                    }
+
+                    $detail['add_on_ids'] = $fallbackIds;
+                    $detail['add_on_qtys'] = $fallbackQtys;
+                    $detail['add_on_prices'] = $fallbackPrices;
+                    $detail['add_on_taxes'] = $fallbackTaxes;
+                }
+
                 if(!isset($detail['reviews_count'])) {
                     $detail['review_count'] = Review::where(['order_id' => $detail['order_id'], 'product_id' => $detail['product_id']])->count();
                 }
@@ -1068,6 +1184,39 @@ class Helpers
         }
 
         return $details;
+    }
+
+    private static function extract_selected_variation_labels(array $variations): array
+    {
+        $labels = [];
+
+        foreach ($variations as $variation) {
+            if (!isset($variation['values'])) {
+                continue;
+            }
+
+            $values = $variation['values'];
+            if (is_array($values) && isset($values['label']) && is_array($values['label'])) {
+                foreach ($values['label'] as $label) {
+                    if (!empty($label)) {
+                        $labels[] = $label;
+                    }
+                }
+                continue;
+            }
+
+            if (is_array($values)) {
+                foreach ($values as $value) {
+                    if (is_array($value) && isset($value['label']) && !empty($value['label'])) {
+                        $labels[] = $value['label'];
+                    } elseif (is_string($value) && !empty($value)) {
+                        $labels[] = $value;
+                    }
+                }
+            }
+        }
+
+        return array_values(array_unique($labels));
     }
 
     public static function product_formatter($product)

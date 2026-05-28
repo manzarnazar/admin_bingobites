@@ -3,7 +3,6 @@
 namespace App\Traits;
 
 use App\CentralLogics\Helpers;
-use App\Model\AddOn;
 use App\Model\Coupon;
 use App\Model\Order;
 use App\Model\Product;
@@ -103,39 +102,14 @@ trait CalculateOrderDataTrait
 
             $discountOnProduct = Helpers::discount_calculate($discountData, $price);
 
-            /*calculation for addon and addon tax start*/
-            $addonQuantities = $cartItem['add_on_qtys'];
-            $addonPrices = [];
-            $addonTaxes = [];
-
-            foreach($cartItem['add_on_ids'] as $key =>$id){
-                $addon = AddOn::find($id);
-                if ($addon) {
-                    $addonPrices[] = $addon['price'];
-                    $addonTaxes[] = ($addon['price'] * $addon['tax']) / 100;
-                }
-            }
-
-            $addonTaxForThisItem = array_reduce(
-                array_map(function ($a, $b) {
-                    return $a * $b;
-                }, $addonQuantities, $addonTaxes),
-                function ($carry, $item) {
-                    return $carry + $item;
-                },
-                0
+            $normalizedAddons = Helpers::normalize_order_addons(
+                product: $product,
+                selectedVariations: $cartItem['variations'] ?? [],
+                selectedAddonIds: $cartItem['add_on_ids'] ?? [],
+                selectedAddonQtys: $cartItem['add_on_qtys'] ?? [],
             );
-            /*calculation for addon and addon tax end*/
-
-            $addonPrice = array_reduce(
-                array_map(function ($a, $b) {
-                    return $a * $b;
-                }, $addonQuantities, $addonPrices),
-                function ($carry, $item) {
-                    return $carry + $item;
-                },
-                0
-            );
+            $addonTaxForThisItem = (float) $normalizedAddons['add_on_tax_amount'];
+            $addonPrice = (float) $normalizedAddons['total_add_on_price'];
 
             $productTaxAmount =  Helpers::new_tax_calculate($product, $price, $discountData);
 
@@ -315,40 +289,14 @@ trait CalculateOrderDataTrait
 
             $discountOnProduct = Helpers::discount_calculate($discountData, $price);
 
-            /*calculation for addon and addon tax start*/
-            $addonQuantities = $cartItem['add_on_qtys'];
-            $addonIds = $cartItem['add_on_ids'] ?? [];
-            $addonPrices = [];
-            $addonTaxes = [];
-
-            foreach($addonIds as $key =>$id){
-                $addon = AddOn::find($id);
-                if ($addon) {
-                    $addonPrices[] = $addon['price'];
-                    $addonTaxes[] = ($addon['price'] * $addon['tax']) / 100;
-                }
-            }
-
-            $addonTaxForThisItem = array_reduce(
-                array_map(function ($a, $b) {
-                    return $a * $b;
-                }, $addonQuantities, $addonTaxes),
-                function ($carry, $item) {
-                    return $carry + $item;
-                },
-                0
+            $normalizedAddons = Helpers::normalize_order_addons(
+                product: $product,
+                selectedVariations: $variations ?? [],
+                selectedAddonIds: $cartItem['add_on_ids'] ?? [],
+                selectedAddonQtys: $cartItem['add_on_qtys'] ?? [],
             );
-            /*calculation for addon and addon tax end*/
-
-            $addonPrice = array_reduce(
-                array_map(function ($a, $b) {
-                    return $a * $b;
-                }, $addonQuantities, $addonPrices),
-                function ($carry, $item) {
-                    return $carry + $item;
-                },
-                0
-            );
+            $addonTaxForThisItem = (float) $normalizedAddons['add_on_tax_amount'];
+            $addonPrice = (float) $normalizedAddons['total_add_on_price'];
 
             $productTaxAmount =  Helpers::new_tax_calculate($product, $price, $discountData);
 

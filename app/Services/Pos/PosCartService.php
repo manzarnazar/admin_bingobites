@@ -184,31 +184,23 @@ class PosCartService
         $price = $branchProduct['price'] + $variationPrice;
         $discountOnProduct = Helpers::discount_calculate($discountData, $price);
 
-        $addonPrice = 0;
-        $addonTotalTax = 0;
-        $allowedAddOnIds = $product->resolvedAddonIds();
-        $addOnIds = collect($requestData['addon_id'] ?? [])
-            ->map(fn($id) => (int) $id)
-            ->filter(fn($id) => in_array($id, $allowedAddOnIds, true))
-            ->values()
-            ->toArray();
-        $addOnQtys = [];
-        $addOnPrices = [];
-        $addOnTax = [];
-
-        if ($addOnIds) {
-            foreach ($addOnIds as $addonId) {
-                $addonQty = (int) ($requestData['addon-quantity' . $addonId] ?? 1);
-                $addonUnitPrice = (float) ($requestData['addon-price' . $addonId] ?? 0);
-                $addonPrice += $addonUnitPrice * $addonQty;
-                $addOnQtys[] = $addonQty;
-                $addOn = AddOn::find($addonId);
-                $addOnPrices[] = $addOn['price'] ?? $addonUnitPrice;
-                $addOnTaxAmount = (($addOn['price'] ?? 0) * ($addOn['tax'] ?? 0) / 100);
-                $addonTotalTax += ($addOnTaxAmount * $addonQty);
-                $addOnTax[] = $addOnTaxAmount;
-            }
+        $selectedAddOnIds = $requestData['addon_id'] ?? [];
+        $selectedAddOnQtys = [];
+        foreach ($selectedAddOnIds as $index => $addonId) {
+            $selectedAddOnQtys[$index] = (int) ($requestData['addon-quantity' . $addonId] ?? 1);
         }
+        $normalizedAddons = Helpers::normalize_order_addons(
+            product: $product,
+            selectedVariations: $variations,
+            selectedAddonIds: $selectedAddOnIds,
+            selectedAddonQtys: $selectedAddOnQtys,
+        );
+        $addOnIds = $normalizedAddons['add_on_ids'];
+        $addOnQtys = $normalizedAddons['add_on_qtys'];
+        $addOnPrices = $normalizedAddons['add_on_prices'];
+        $addOnTax = $normalizedAddons['add_on_taxes'];
+        $addonPrice = (float) $normalizedAddons['total_add_on_price'];
+        $addonTotalTax = (float) $normalizedAddons['add_on_tax_amount'];
 
         $item = [
             'id' => $product->id,

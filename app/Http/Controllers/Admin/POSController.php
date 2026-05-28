@@ -356,33 +356,24 @@ class POSController extends Controller
         $data['name'] = $product->name;
         $data['discount'] = $discount_on_product;
         $data['image'] = $product->image;
-        $data['add_ons'] = [];
-        $data['add_on_qtys'] = [];
-        $data['add_on_prices'] = [];
-        $data['add_on_tax'] = [];
-
-        $allowedAddOnIds = $product ? $product->resolvedAddonIds() : [];
-        $selectedAddOnIds = [];
-        if ($request['addon_id']) {
-            foreach ($request['addon_id'] as $id) {
-                if (!in_array((int) $id, $allowedAddOnIds, true)) {
-                    continue;
-                }
-                $addon_price += $request['addon-price' . $id] * $request['addon-quantity' . $id];
-                $data['add_on_qtys'][] = $request['addon-quantity' . $id];
-                $selectedAddOnIds[] = (int) $id;
-
-                $add_on = AddOn::find($id);
-                $data['add_on_prices'][] = $add_on['price'];
-                $add_on_tax = ($add_on['price'] * $add_on['tax']/100);
-                $addon_total_tax += (($add_on['price'] * $add_on['tax']/100) * $request['addon-quantity' . $id]);
-                $data['add_on_tax'][] = $add_on_tax;
-            }
-            $data['add_ons'] = $selectedAddOnIds;
+        $selectedAddOnIds = $request->input('addon_id', []);
+        $selectedAddOnQtys = [];
+        foreach ($selectedAddOnIds as $index => $addonId) {
+            $selectedAddOnQtys[$index] = (int) ($request->input('addon-quantity' . $addonId, 1));
         }
+        $normalizedAddons = Helpers::normalize_order_addons(
+            product: $product,
+            selectedVariations: $variations,
+            selectedAddonIds: $selectedAddOnIds,
+            selectedAddonQtys: $selectedAddOnQtys,
+        );
 
-        $data['addon_price'] = $addon_price;
-        $data['addon_total_tax'] = $addon_total_tax;
+        $data['add_ons'] = $normalizedAddons['add_on_ids'];
+        $data['add_on_qtys'] = $normalizedAddons['add_on_qtys'];
+        $data['add_on_prices'] = $normalizedAddons['add_on_prices'];
+        $data['add_on_tax'] = $normalizedAddons['add_on_taxes'];
+        $data['addon_price'] = (float) $normalizedAddons['total_add_on_price'];
+        $data['addon_total_tax'] = (float) $normalizedAddons['add_on_tax_amount'];
         $data['discount_data'] = $discount_data;
 
         if ($request->session()->has('cart')) {
@@ -515,18 +506,17 @@ class POSController extends Controller
 
                 $total_price_for_discount_validation += $c['price'];
 
-                $product = $this->product->find($c['id']);
-                if ($product) {
+                    $productModel = $this->product->find($c['id']);
+                    if ($productModel) {
                     $price = $c['price'];
 
-                    $product = Helpers::product_data_formatting($product);
-                    $addon_data = Helpers::calculate_addon_price(AddOn::whereIn('id', $c['add_ons'])->get(), $c['add_on_qtys']);
-
-                    //*** addon quantity integer casting ***
-                    array_walk($c['add_on_qtys'], function (&$add_on_qtys) {
-                        $add_on_qtys = (int)$add_on_qtys;
-                    });
-                    //***end***
+                    $normalizedAddons = Helpers::normalize_order_addons(
+                        product: $productModel,
+                        selectedVariations: $c['variations'] ?? [],
+                        selectedAddonIds: $c['add_ons'] ?? [],
+                        selectedAddonQtys: $c['add_on_qtys'] ?? [],
+                    );
+                    $product = Helpers::product_data_formatting($productModel);
 
                     $branch_product = $this->productByBranch->where(['product_id' => $c['id'], 'branch_id' => session()->get('branch_id')])->first();
 
@@ -562,18 +552,18 @@ class POSController extends Controller
                         'discount_type' => 'discount_on_product',
                         //'variant' => json_encode($c['variant']),
                         'variation' => json_encode($variations),
-                        'add_on_ids' => json_encode($addon_data['addons']),
-                        'add_on_qtys' => json_encode($c['add_on_qtys']),
-                        'add_on_prices' => json_encode($c['add_on_prices']),
-                        'add_on_taxes' => json_encode($c['add_on_tax']),
-                        'add_on_tax_amount' => $c['addon_total_tax'],
+                        'add_on_ids' => json_encode($normalizedAddons['add_on_ids']),
+                        'add_on_qtys' => json_encode($normalizedAddons['add_on_qtys']),
+                        'add_on_prices' => json_encode($normalizedAddons['add_on_prices']),
+                        'add_on_taxes' => json_encode($normalizedAddons['add_on_taxes']),
+                        'add_on_tax_amount' => $normalizedAddons['add_on_tax_amount'],
                         'created_at' => now(),
                         'updated_at' => now()
                     ];
                     $total_tax_amount += $or_d['tax_amount'] * $c['quantity'];
-                    $total_addon_price += $addon_data['total_add_on_price'];
+                    $total_addon_price += $normalizedAddons['total_add_on_price'];
 
-                    $total_addon_tax += $c['addon_total_tax'];
+                    $total_addon_tax += $normalizedAddons['add_on_tax_amount'];
 
                     $product_price += $product_subtotal - $discount_on_product;
                     $order_details[] = $or_d;
