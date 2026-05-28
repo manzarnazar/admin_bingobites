@@ -1146,24 +1146,35 @@ class Helpers
                         $nameToAddon[mb_strtolower(trim($addon->name))] = $addon;
                     }
 
-                    $selectedLabels = self::extract_selected_variation_labels($detail['variation']);
+                    $selectedLabelsWithQty = self::extract_selected_variation_labels_with_qty($detail['variation']);
+                    $fallbackByAddonId = [];
+                    foreach ($selectedLabelsWithQty as $selectedLabel) {
+                        $lookup = mb_strtolower(trim((string) ($selectedLabel['label'] ?? '')));
+                        if ($lookup === '' || !isset($nameToAddon[$lookup])) {
+                            continue;
+                        }
+                        $addon = $nameToAddon[$lookup];
+                        $qty = max(1, (int) ($selectedLabel['qty'] ?? 1));
+
+                        if (!isset($fallbackByAddonId[$addon->id])) {
+                            $fallbackByAddonId[$addon->id] = [
+                                'qty' => 0,
+                                'price' => (float) $addon->price,
+                                'tax' => ((float) $addon->price * (float) $addon->tax) / 100,
+                            ];
+                        }
+                        $fallbackByAddonId[$addon->id]['qty'] += $qty;
+                    }
+
                     $fallbackIds = [];
                     $fallbackQtys = [];
                     $fallbackPrices = [];
                     $fallbackTaxes = [];
-                    foreach ($selectedLabels as $label) {
-                        $lookup = mb_strtolower(trim((string) $label));
-                        if (!isset($nameToAddon[$lookup])) {
-                            continue;
-                        }
-                        $addon = $nameToAddon[$lookup];
-                        if (in_array($addon->id, $fallbackIds, true)) {
-                            continue;
-                        }
-                        $fallbackIds[] = (int) $addon->id;
-                        $fallbackQtys[] = 1;
-                        $fallbackPrices[] = (float) $addon->price;
-                        $fallbackTaxes[] = ((float) $addon->price * (float) $addon->tax) / 100;
+                    foreach ($fallbackByAddonId as $addonId => $addonData) {
+                        $fallbackIds[] = (int) $addonId;
+                        $fallbackQtys[] = (int) ($addonData['qty'] ?? 1);
+                        $fallbackPrices[] = (float) ($addonData['price'] ?? 0);
+                        $fallbackTaxes[] = (float) ($addonData['tax'] ?? 0);
                     }
 
                     $detail['add_on_ids'] = $fallbackIds;
@@ -1253,6 +1264,39 @@ class Helpers
         }
 
         return array_values(array_unique($labels));
+    }
+
+    private static function extract_selected_variation_labels_with_qty(array $variations): array
+    {
+        $labels = [];
+
+        foreach ($variations as $variation) {
+            if (!isset($variation['values'])) {
+                continue;
+            }
+
+            $values = $variation['values'];
+            if (is_array($values) && isset($values['label']) && is_array($values['label'])) {
+                foreach ($values['label'] as $label) {
+                    if (!empty($label)) {
+                        $labels[] = ['label' => (string) $label, 'qty' => 1];
+                    }
+                }
+                continue;
+            }
+
+            if (is_array($values)) {
+                foreach ($values as $value) {
+                    if (is_array($value) && isset($value['label']) && !empty($value['label'])) {
+                        $labels[] = ['label' => (string) $value['label'], 'qty' => 1];
+                    } elseif (is_string($value) && !empty($value)) {
+                        $labels[] = ['label' => $value, 'qty' => 1];
+                    }
+                }
+            }
+        }
+
+        return $labels;
     }
 
     public static function product_formatter($product)
