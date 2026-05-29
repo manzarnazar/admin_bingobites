@@ -211,6 +211,7 @@ class ConfigController extends Controller
             'footer_description_text' => Helpers::get_business_settings('footer_description_text'),
             'customer_login' => $customerLogin,
             'google_map_status' => (integer) (Helpers::get_business_settings('google_map_status') ?? 0),
+            'map_api_client_key' => $this->map_key,
             'maintenance_mode' => (boolean) Helpers::get_business_settings('maintenance_mode') ?? 0,
             'advance_maintenance_mode' => $maintenanceMode,
             'halal_tag_status' => (integer) (Helpers::get_business_settings('halal_tag_status') ?? 0),
