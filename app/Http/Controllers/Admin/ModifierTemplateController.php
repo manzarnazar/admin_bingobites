@@ -6,6 +6,7 @@ use App\CentralLogics\Helpers;
 use App\Http\Controllers\Controller;
 use App\Model\AddOn;
 use App\Model\ModifierTemplate;
+use App\Model\Product;
 use Brian2694\Toastr\Facades\Toastr;
 use Illuminate\Contracts\Support\Renderable;
 use Illuminate\Http\RedirectResponse;
@@ -16,7 +17,8 @@ class ModifierTemplateController extends Controller
 {
     public function __construct(
         private ModifierTemplate $modifierTemplate,
-        private AddOn $addOn
+        private AddOn $addOn,
+        private Product $product
     ){}
 
     public function index(Request $request): Renderable
@@ -36,12 +38,15 @@ class ModifierTemplateController extends Controller
         }
 
         $templates = $templates->with('items.addon')
+            ->withCount('products')
             ->orderByDesc('id')
             ->paginate(Helpers::getPagination())
             ->appends($queryParam);
 
         $addons = $this->addOn->orderBy('name')->get();
-        return view('admin-views.modifier-template.index', compact('templates', 'addons', 'search'));
+        $products = $this->product->active()->orderBy('name')->get(['id', 'name']);
+
+        return view('admin-views.modifier-template.index', compact('templates', 'addons', 'products', 'search'));
     }
 
     public function store(Request $request): RedirectResponse
@@ -54,6 +59,8 @@ class ModifierTemplateController extends Controller
             'items' => 'required|array|min:1',
             'items.*.add_on_id' => 'required|exists:add_ons,id',
             'items.*.sort_order' => 'nullable|integer|min:0',
+            'product_ids' => 'nullable|array',
+            'product_ids.*' => 'exists:products,id',
         ]);
 
         $validated = $this->validateItemSelectionRules($request);
@@ -84,6 +91,8 @@ class ModifierTemplateController extends Controller
                 ];
             }
             $template->items()->createMany($items);
+
+            $this->syncProducts($template, $request->product_ids ?? []);
         });
 
         Toastr::success(translate('Modifier template created successfully!'));
@@ -92,9 +101,11 @@ class ModifierTemplateController extends Controller
 
     public function edit($id): Renderable
     {
-        $template = $this->modifierTemplate->with('items')->findOrFail($id);
+        $template = $this->modifierTemplate->with(['items', 'products'])->findOrFail($id);
         $addons = $this->addOn->orderBy('name')->get();
-        return view('admin-views.modifier-template.edit', compact('template', 'addons'));
+        $products = $this->product->active()->orderBy('name')->get(['id', 'name']);
+
+        return view('admin-views.modifier-template.edit', compact('template', 'addons', 'products'));
     }
 
     public function update(Request $request, $id): RedirectResponse
@@ -107,6 +118,8 @@ class ModifierTemplateController extends Controller
             'items' => 'required|array|min:1',
             'items.*.add_on_id' => 'required|exists:add_ons,id',
             'items.*.sort_order' => 'nullable|integer|min:0',
+            'product_ids' => 'nullable|array',
+            'product_ids.*' => 'exists:products,id',
         ]);
 
         $validated = $this->validateItemSelectionRules($request);
@@ -139,6 +152,8 @@ class ModifierTemplateController extends Controller
                 ];
             }
             $template->items()->createMany($items);
+
+            $this->syncProducts($template, $request->product_ids ?? []);
         });
 
         Toastr::success(translate('Modifier template updated successfully!'));
@@ -164,6 +179,37 @@ class ModifierTemplateController extends Controller
 
         Toastr::success(translate('updated successfully!'));
         return back();
+    }
+
+    private function syncProducts(ModifierTemplate $template, array $productIds = []): void
+    {
+        $productIds = array_values(array_unique(array_filter($productIds)));
+        $syncData = [];
+
+        foreach ($productIds as $productId) {
+            $product = $this->product->find($productId);
+            if (!$product) {
+                continue;
+            }
+
+            $existing = $product->modifierTemplates()
+                ->where('modifier_templates.id', $template->id)
+                ->first();
+
+            if ($existing) {
+                $sortOrder = (int) $existing->pivot->sort_order;
+            } else {
+                $maxSort = $product->modifierTemplates()->max('product_modifier_template.sort_order');
+                $sortOrder = $maxSort !== null ? ((int) $maxSort) + 1 : 0;
+            }
+
+            $syncData[$productId] = [
+                'sort_order' => $sortOrder,
+                'is_active' => 1,
+            ];
+        }
+
+        $template->products()->sync($syncData);
     }
 
     private function validateItemSelectionRules(Request $request): bool|string

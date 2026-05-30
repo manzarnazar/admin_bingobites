@@ -70,6 +70,7 @@
                             <th>{{translate('selection_type')}}</th>
                             <th>{{translate('rule')}}</th>
                             <th>{{translate('items')}}</th>
+                            <th>{{translate('products')}}</th>
                             <th class="text-center">{{translate('status')}}</th>
                             <th class="text-center">{{translate('action')}}</th>
                         </tr>
@@ -90,6 +91,9 @@
                                     <div class="line--limit-2">
                                         {{ $template->items->pluck('addon.name')->filter()->implode(', ') }}
                                     </div>
+                                </td>
+                                <td>
+                                    <span class="badge badge-soft-info">{{ $template->products_count }} {{translate('products')}}</span>
                                 </td>
                                 <td class="text-center">
                                     <label class="toggle-switch toggle-switch-sm" for="status-{{$template->id}}">
@@ -221,6 +225,21 @@
                             </div>
                         </div>
 
+                        <hr>
+                        <div class="form-group mb-0">
+                            <label class="input-label">{{translate('Assign Products')}}</label>
+                            <small class="d-block text-muted mb-2">
+                                {{translate('Attach this template to one or more products at once.')}}
+                            </small>
+                            <select name="product_ids[]" class="form-control" id="choose_template_products" multiple="multiple">
+                                @foreach($products as $product)
+                                    <option value="{{$product->id}}" {{collect(old('product_ids', []))->contains($product->id) ? 'selected' : ''}}>
+                                        {{$product->name}}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+
                         <div class="d-flex justify-content-end gap-3 mt-4">
                             <button type="reset" class="btn btn-secondary">{{translate('reset')}}</button>
                             <button type="submit" class="btn btn-primary">{{translate('submit')}}</button>
@@ -268,6 +287,12 @@
             if ($('.template-item-row').length > 1) {
                 $(this).closest('.template-item-row').remove();
             }
+        });
+
+        $("#choose_template_products").select2({
+            placeholder: "{{translate('Select Products')}}",
+            allowClear: true,
+            dropdownParent: $('#addModifierTemplateModal')
         });
     </script>
 @endpush
