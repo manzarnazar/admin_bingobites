@@ -51,7 +51,8 @@ class AddonController extends Controller
         $request->validate([
             'name' => 'required|unique:add_ons',
             'price' => 'required|max:8',
-            'tax' => 'required|max:100'
+            'tax' => 'required|max:100',
+            'max_qty' => 'nullable|integer|min:1',
         ]);
 
         foreach ($request->name as $name) {
@@ -65,6 +66,7 @@ class AddonController extends Controller
         $addon->name = $request->name[array_search('en', $request->lang)];
         $addon->price = $request->price;
         $addon->tax = $request->tax;
+        $addon->max_qty = $request->filled('max_qty') ? (int) $request->max_qty : null;
         $addon->save();
 
         $data = [];
@@ -106,7 +108,8 @@ class AddonController extends Controller
     {
         $request->validate([
             'name' => 'required|unique:add_ons,name,' . $id,
-            'price' => 'required|max:9'
+            'price' => 'required|max:9',
+            'max_qty' => 'nullable|integer|min:1',
         ]);
 
         foreach ($request->name as $name) {
@@ -120,6 +123,7 @@ class AddonController extends Controller
         $addon->name = $request->name[array_search('en', $request->lang)];
         $addon->price = $request->price;
         $addon->tax = $request->tax;
+        $addon->max_qty = $request->filled('max_qty') ? (int) $request->max_qty : null;
         $addon->save();
 
         foreach ($request->lang as $index => $key) {

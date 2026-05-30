@@ -50,6 +50,7 @@
                                             <th>{{translate('name')}}</th>
                                             <th>{{translate('price')}}</th>
                                             <th class="text-center">{{translate('tax')}} (%)</th>
+                                            <th class="text-center">{{translate('Max Qty')}}</th>
                                             <th class="text-center">{{translate('action')}}</th>
                                         </tr>
                                     </thead>
@@ -65,6 +66,7 @@
                                             </td>
                                             <td>{{ Helpers::set_symbol($addon['price']) }}</td>
                                             <td class="text-center">{{ $addon['tax'] }}</td>
+                                            <td class="text-center">{{ $addon['max_qty'] ?? '—' }}</td>
                                             <td>
                                                 <div class="d-flex justify-content-center gap-2">
                                                     <a class="btn btn-outline-info btn-sm edit square-btn"
@@ -157,6 +159,12 @@
                                             <input type="number" min="0" name="tax" step="any" class="form-control"
                                                    placeholder="5" required
                                                    oninvalid="document.getElementById('en-link').click()">
+                                        </div>
+                                        <div class="col-sm-6 from_part_2 mb-4">
+                                            <label class="input-label">{{translate('Max Qty')}}</label>
+                                            <input type="number" min="1" name="max_qty" step="1" class="form-control"
+                                                   placeholder="{{translate('Optional')}}">
+                                            <small class="text-muted">{{translate('Maximum quantity per addon in customer app')}}</small>
                                         </div>
                                         <div class="col-12">
                                             <div class="d-flex justify-content-end gap-3">

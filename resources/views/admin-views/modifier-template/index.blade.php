@@ -177,6 +177,7 @@
                         </div>
                         <div class="template-items-header d-none d-md-grid">
                             <span>{{ translate('Addon') }}</span>
+                            <span>{{ translate('Max Qty') }}</span>
                             <span>{{ translate('Sort') }}</span>
                             <span>{{ translate('Options') }}</span>
                             <span></span>

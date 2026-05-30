@@ -13,6 +13,7 @@ class ModifierTemplateItem extends Model
         'sort_order',
         'is_default',
         'is_active',
+        'max_qty',
     ];
 
     protected $casts = [
@@ -21,6 +22,7 @@ class ModifierTemplateItem extends Model
         'sort_order' => 'integer',
         'is_default' => 'integer',
         'is_active' => 'integer',
+        'max_qty' => 'integer',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
     ];

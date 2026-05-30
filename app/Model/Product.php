@@ -249,10 +249,15 @@ class Product extends Model
                 if (!($item->is_active ?? 1) || !$item->addon) {
                     continue;
                 }
-                $values[] = [
+                $optionMaxQty = $item->max_qty ?? $item->addon->max_qty ?? null;
+                $value = [
                     'label' => $item->addon->name,
                     'optionPrice' => (float) $item->addon->price,
                 ];
+                if ($optionMaxQty !== null && (int) $optionMaxQty > 0) {
+                    $value['optionMaxQty'] = (int) $optionMaxQty;
+                }
+                $values[] = $value;
             }
 
             if (count($values) === 0) {

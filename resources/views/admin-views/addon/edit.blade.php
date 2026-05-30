@@ -84,6 +84,15 @@
                                                            oninvalid="document.getElementById('en-link').click()">
                                                 </div>
                                             </div>
+                                            <div class="col-sm-6 from_part_2">
+                                                <div class="form-group">
+                                                    <label class="input-label">{{translate('Max Qty')}}</label>
+                                                    <input type="number" min="1" step="1" name="max_qty"
+                                                           value="{{$addon['max_qty']}}" class="form-control"
+                                                           placeholder="{{translate('Optional')}}">
+                                                    <small class="text-muted">{{translate('Maximum quantity per addon in customer app')}}</small>
+                                                </div>
+                                            </div>
                                             <div class="col-12 mb-2">
                                                 <div class="d-flex justify-content-end gap-3">
                                                     <button type="reset" class="btn btn-secondary">{{translate('reset')}}</button>

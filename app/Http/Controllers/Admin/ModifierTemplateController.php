@@ -59,6 +59,7 @@ class ModifierTemplateController extends Controller
             'max_select' => 'required|integer|min:0',
             'items' => 'required|array|min:1',
             'items.*.sort_order' => 'nullable|integer|min:0',
+            'items.*.max_qty' => 'nullable|integer|min:1',
             'product_ids' => 'nullable|array',
             'product_ids.*' => 'exists:products,id',
         ]);
@@ -121,6 +122,7 @@ class ModifierTemplateController extends Controller
             'max_select' => 'required|integer|min:0',
             'items' => 'required|array|min:1',
             'items.*.sort_order' => 'nullable|integer|min:0',
+            'items.*.max_qty' => 'nullable|integer|min:1',
             'product_ids' => 'nullable|array',
             'product_ids.*' => 'exists:products,id',
         ]);
@@ -265,6 +267,7 @@ class ModifierTemplateController extends Controller
                 'sort_order' => $item['sort_order'] ?? $index,
                 'is_default' => isset($item['is_default']) ? 1 : 0,
                 'is_active' => isset($item['is_active']) ? 1 : 0,
+                'max_qty' => !empty($item['max_qty']) ? (int) $item['max_qty'] : null,
             ];
         }
 
@@ -329,6 +332,14 @@ class ModifierTemplateController extends Controller
 
         if ($max > $itemsCount) {
             return translate('Maximum selection cannot be greater than total template items.');
+        }
+
+        if ($max > 0) {
+            foreach ($builtItems as $item) {
+                if (!empty($item['max_qty']) && (int) $item['max_qty'] > $max) {
+                    return translate('Per-addon max quantity cannot exceed template maximum selection.');
+                }
+            }
         }
 
         return true;

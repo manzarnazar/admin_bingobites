@@ -4,7 +4,7 @@
     }
     .template-items-header {
         display: grid;
-        grid-template-columns: minmax(200px, 2fr) 72px 110px 44px;
+        grid-template-columns: minmax(200px, 2fr) 72px 72px 110px 44px;
         gap: .75rem;
         padding: 0 .25rem .5rem;
         font-size: .75rem;
@@ -15,7 +15,7 @@
     }
     .template-item-row {
         display: grid;
-        grid-template-columns: minmax(200px, 2fr) 72px 110px 44px;
+        grid-template-columns: minmax(200px, 2fr) 72px 72px 110px 44px;
         gap: .75rem;
         align-items: start;
         padding: .75rem;

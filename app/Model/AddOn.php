@@ -12,6 +12,7 @@ class AddOn extends Model
 {
     protected $casts = [
         'price' => 'float',
+        'max_qty' => 'integer',
         'created_at' => 'datetime',
         'updated_at' => 'datetime'
     ];

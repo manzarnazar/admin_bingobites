@@ -4,6 +4,7 @@
     $newPrice = old("items.{$index}.new_price", '');
     $isNewMode = $selectedAddonId === 'new' || ($selectedAddonId === '' && ($newName !== '' || $newPrice !== ''));
     $sortOrder = isset($item) ? $item->sort_order : (old("items.{$index}.sort_order") ?? '');
+    $maxQty = isset($item) ? $item->max_qty : (old("items.{$index}.max_qty") ?? '');
     $isDefault = isset($item) ? $item->is_default : old("items.{$index}.is_default");
     $isActive = isset($item) ? $item->is_active : (old("items.{$index}.is_active") !== null ? old("items.{$index}.is_active") : true);
 @endphp
@@ -33,6 +34,14 @@
                    placeholder="{{ translate('Price') }}"
                    value="{{ $newPrice }}">
         </div>
+    </div>
+    <div>
+        <input type="number"
+               min="1"
+               class="form-control form-control-sm"
+               name="items[{{ $index }}][max_qty]"
+               value="{{ $maxQty }}"
+               placeholder="{{ translate('Optional') }}">
     </div>
     <div>
         <input type="number"
