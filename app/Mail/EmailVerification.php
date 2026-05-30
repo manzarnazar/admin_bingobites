@@ -20,8 +20,9 @@ class EmailVerification extends Mailable
      * @return void
      */
     protected $token;
+    protected $language_code;
 
-    public function __construct($token = '', $language_code)
+    public function __construct($token, $language_code = 'en')
     {
         $this->token = $token;
         $this->language_code = $language_code;
@@ -37,34 +38,32 @@ class EmailVerification extends Mailable
         $code = $this->token;
         //return $this->view('email-templates.customer-email-verification', ['token' => $token]);
 
-        $data= EmailTemplate::with('translations')->where('type','user')->where('email_type', 'registration_otp')->first();
+        $data = EmailTemplate::with('translations')->where('type', 'user')->where('email_type', 'registration_otp')->first();
         $local = $this->language_code ?? 'en';
 
         $content = [
-            'title' => $data->title,
-            'body' => $data->body,
-            'footer_text' => $data->footer_text,
-            'copyright_text' => $data->copyright_text
+            'title' => $data?->title ?? translate('Registration_OTP'),
+            'body' => $data?->body ?? '<p>Please use the verification code below to complete your registration.</p>',
+            'footer_text' => $data?->footer_text ?? translate('Please_contact_us_for_any_queries,_we’re_always_happy_to_help.'),
+            'copyright_text' => $data?->copyright_text ?? translate('Copyright_2023_eFood._All_right_reserved'),
         ];
 
-        if ($local != 'en'){
-            if (isset($data->translations)){
-                foreach ($data->translations as $translation){
-                    if ($local == $translation->locale){
-                        $content[$translation->key] = $translation->value;
-                    }
+        if ($local != 'en' && isset($data->translations)) {
+            foreach ($data->translations as $translation) {
+                if ($local == $translation->locale) {
+                    $content[$translation->key] = $translation->value;
                 }
             }
         }
 
-        $template=$data?$data->email_template:4;
+        $template = $data?->email_template ?? 4;
         $url = '';
         $company_name = BusinessSetting::where('key', 'restaurant_name')->first()->value;
         $title = Helpers::text_variable_data_format( value:$content['title']??'');
         $body = Helpers::text_variable_data_format( value:$content['body']??'');
         $footer_text = Helpers::text_variable_data_format( value:$content['footer_text']??'');
         $copyright_text = Helpers::text_variable_data_format( value:$content['copyright_text']??'');
-        return $this->subject(translate('Customer_Password_Reset_mail'))->view('email-templates.new-email-format-'.$template, ['company_name'=>$company_name,'data'=>$data,'title'=>$title,'body'=>$body,'footer_text'=>$footer_text,'copyright_text'=>$copyright_text,'url'=>$url, 'code'=>$code]);
+        return $this->subject(translate('Registration_OTP'))->view('email-templates.new-email-format-'.$template, ['company_name'=>$company_name,'data'=>$data,'title'=>$title,'body'=>$body,'footer_text'=>$footer_text,'copyright_text'=>$copyright_text,'url'=>$url, 'code'=>$code]);
 
     }
 }

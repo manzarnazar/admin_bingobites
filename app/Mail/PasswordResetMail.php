@@ -21,6 +21,8 @@ class PasswordResetMail extends Mailable
      */
 
     protected $token;
+    protected $name;
+    protected $language_code;
 
     public function __construct($token, $name, $language_code)
     {
@@ -39,27 +41,25 @@ class PasswordResetMail extends Mailable
         $code = $this->token;
        // return $this->view('email-templates.customer-password-reset', ['token' => $token]);
 
-        $data= EmailTemplate::with('translations')->where('type','user')->where('email_type', 'forget_password')->first();
+        $data = EmailTemplate::with('translations')->where('type', 'user')->where('email_type', 'forget_password')->first();
         $local = $this->language_code ?? 'en';
 
         $content = [
-            'title' => $data->title,
-            'body' => $data->body,
-            'footer_text' => $data->footer_text,
-            'copyright_text' => $data->copyright_text
+            'title' => $data?->title ?? translate('Customer_Password_Reset_mail'),
+            'body' => $data?->body ?? '<p>Please use the verification code below to reset your password.</p>',
+            'footer_text' => $data?->footer_text ?? translate('Please_contact_us_for_any_queries,_we’re_always_happy_to_help.'),
+            'copyright_text' => $data?->copyright_text ?? translate('Copyright_2023_eFood._All_right_reserved'),
         ];
 
-        if ($local != 'en'){
-            if (isset($data->translations)){
-                foreach ($data->translations as $translation){
-                    if ($local == $translation->locale){
-                        $content[$translation->key] = $translation->value;
-                    }
+        if ($local != 'en' && isset($data->translations)) {
+            foreach ($data->translations as $translation) {
+                if ($local == $translation->locale) {
+                    $content[$translation->key] = $translation->value;
                 }
             }
         }
 
-        $template=$data?$data->email_template:4;
+        $template = $data?->email_template ?? 4;
         $url = '';
         $customer_name = $this->name;
         $company_name = BusinessSetting::where('key', 'restaurant_name')->first()->value;
