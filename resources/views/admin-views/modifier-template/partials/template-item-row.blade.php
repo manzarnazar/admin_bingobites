@@ -7,9 +7,9 @@
     $isDefault = isset($item) ? $item->is_default : old("items.{$index}.is_default");
     $isActive = isset($item) ? $item->is_active : (old("items.{$index}.is_active") !== null ? old("items.{$index}.is_active") : true);
 @endphp
-<div class="row g-2 template-item-row mb-2" data-row="{{ $index }}">
-    <div class="col-md-4">
-        <select name="items[{{ $index }}][add_on_id]" class="form-control template-addon-select">
+<div class="template-item-row" data-row="{{ $index }}">
+    <div class="template-addon-cell">
+        <select name="items[{{ $index }}][add_on_id]" class="form-control form-control-sm template-addon-select">
             <option value="">{{ translate('Select Addon') }}</option>
             <option value="new" {{ $isNewMode ? 'selected' : '' }}>{{ translate('Create new addon') }}</option>
             @foreach($addons as $addon)
@@ -18,42 +18,43 @@
                 </option>
             @endforeach
         </select>
-    </div>
-    <div class="col-md-4 new-addon-fields {{ $isNewMode ? '' : 'd-none' }}">
-        <div class="row g-1">
-            <div class="col-7">
-                <input type="text"
-                       name="items[{{ $index }}][new_name]"
-                       class="form-control template-new-name"
-                       placeholder="{{ translate('Addon name') }}"
-                       value="{{ $newName }}"
-                       maxlength="255">
-            </div>
-            <div class="col-5">
-                <input type="number"
-                       step="any"
-                       min="0"
-                       name="items[{{ $index }}][new_price]"
-                       class="form-control template-new-price"
-                       placeholder="{{ translate('Price') }}"
-                       value="{{ $newPrice }}">
-            </div>
+        <div class="new-addon-fields {{ $isNewMode ? '' : 'd-none' }}">
+            <input type="text"
+                   name="items[{{ $index }}][new_name]"
+                   class="form-control form-control-sm template-new-name"
+                   placeholder="{{ translate('Addon name') }}"
+                   value="{{ $newName }}"
+                   maxlength="255">
+            <input type="number"
+                   step="any"
+                   min="0"
+                   name="items[{{ $index }}][new_price]"
+                   class="form-control form-control-sm template-new-price"
+                   placeholder="{{ translate('Price') }}"
+                   value="{{ $newPrice }}">
         </div>
     </div>
-    <div class="col-md-1">
-        <input type="number" min="0" class="form-control" name="items[{{ $index }}][sort_order]" value="{{ $sortOrder }}" placeholder="{{ translate('Sort') }}">
+    <div>
+        <input type="number"
+               min="0"
+               class="form-control form-control-sm template-sort-input"
+               name="items[{{ $index }}][sort_order]"
+               value="{{ $sortOrder }}"
+               placeholder="{{ translate('Sort') }}">
     </div>
-    <div class="col-md-2 d-flex align-items-center">
+    <div class="template-toggles">
         <label class="template-toggle-label">
-            <input type="checkbox" name="items[{{ $index }}][is_default]" {{ $isDefault ? 'checked' : '' }}> {{ translate('Default') }}
+            <input type="checkbox" name="items[{{ $index }}][is_default]" {{ $isDefault ? 'checked' : '' }}>
+            {{ translate('Default') }}
+        </label>
+        <label class="template-toggle-label">
+            <input type="checkbox" name="items[{{ $index }}][is_active]" {{ $isActive ? 'checked' : '' }}>
+            {{ translate('Active') }}
         </label>
     </div>
-    <div class="col-md-1">
-        <div class="template-item-actions">
-            <label class="template-toggle-label">
-                <input type="checkbox" name="items[{{ $index }}][is_active]" {{ $isActive ? 'checked' : '' }}> {{ translate('Active') }}
-            </label>
-            <button type="button" class="btn btn-danger btn-sm remove-template-item-row"><i class="tio-delete"></i></button>
-        </div>
+    <div class="template-delete-btn">
+        <button type="button" class="btn btn-outline-danger btn-sm remove-template-item-row" title="{{ translate('Remove') }}">
+            <i class="tio-delete"></i>
+        </button>
     </div>
 </div>

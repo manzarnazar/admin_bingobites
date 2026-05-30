@@ -3,25 +3,7 @@
 @section('title', translate('Update Modifier Template'))
 
 @push('css_or_js')
-    <style>
-        .template-item-row {
-            align-items: center;
-        }
-        .template-toggle-label {
-            display: flex;
-            align-items: center;
-            gap: .4rem;
-            white-space: nowrap;
-            margin-bottom: 0;
-        }
-        .template-item-actions {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: .5rem;
-            flex-wrap: nowrap;
-        }
-    </style>
+    @include('admin-views.modifier-template.partials.template-item-styles')
 @endpush
 
 @section('content')
@@ -75,6 +57,12 @@
                         </button>
                     </div>
 
+                    <div class="template-items-header d-none d-md-grid">
+                        <span>{{ translate('Addon') }}</span>
+                        <span>{{ translate('Sort') }}</span>
+                        <span>{{ translate('Options') }}</span>
+                        <span></span>
+                    </div>
                     <div id="template-item-rows">
                         @foreach($template->items as $index => $item)
                             @include('admin-views.modifier-template.partials.template-item-row', ['index' => $index, 'addons' => $addons, 'item' => $item])
