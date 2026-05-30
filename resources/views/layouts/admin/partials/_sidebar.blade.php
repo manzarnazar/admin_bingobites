@@ -258,13 +258,13 @@
                                             </span>
                                         </a>
                                     </li>
-                                    <li class="nav-item {{Request::is('admin/table/order/list/confirmed')?'active':''}}">
-                                        <a class="nav-link" href="{{route('admin.table.order.list',['confirmed'])}}" title="">
+                                    <li class="nav-item {{Request::is('admin/table/order/list/new_orders')?'active':''}}">
+                                        <a class="nav-link" href="{{route('admin.table.order.list',['new_orders'])}}" title="">
                                             <span class="tio-circle nav-indicator-icon"></span>
                                             <span class="text-truncate sidebar--badge-container">
-                                                {{translate('confirmed')}}
+                                                {{translate('new_orders')}}
                                                 <span class="badge badge-soft-info badge-pill ml-1">
-                                                    {{\App\Model\Order::notPos()->dineIn()->where(['order_status'=>'confirmed'])->notSchedule()->count()}}
+                                                    {{\App\Model\Order::notPos()->dineIn()->whereIn('order_status', ['pending', 'confirmed'])->notSchedule()->count()}}
                                                 </span>
                                             </span>
                                         </a>
@@ -284,7 +284,7 @@
                                         <a class="nav-link " href="{{route('admin.table.order.list',['done'])}}" title="">
                                             <span class="tio-circle nav-indicator-icon"></span>
                                             <span class="text-truncate sidebar--badge-container">
-                                                {{translate('Ready_For_Serve')}}
+                                                {{translate('ready')}}
                                                 <span class="badge badge-soft-success badge-pill ml-1">
                                                     {{\App\Model\Order::notPos()->dineIn()->where(['order_status'=>'done'])->notSchedule()->count()}}
                                                 </span>

@@ -244,14 +244,14 @@
                                             </span>
                                     </a>
                                 </li>
-                                <li class="nav-item {{Request::is('branch/table/order/list/confirmed')?'active':''}}">
-                                    <a class="nav-link" href="{{route('branch.table.order.list',['confirmed'])}}"
+                                <li class="nav-item {{Request::is('branch/table/order/list/new_orders')?'active':''}}">
+                                    <a class="nav-link" href="{{route('branch.table.order.list',['new_orders'])}}"
                                        title="">
                                         <span class="tio-circle nav-indicator-icon"></span>
                                         <span class="text-truncate sidebar--badge-container">
-                                                {{translate('confirmed')}}
+                                                {{translate('new_orders')}}
                                             <span class="badge badge-soft-success badge-pill ml-1">
-                                                {{\App\Model\Order::dineIn()->where(['order_status'=>'confirmed'])->where(['branch_id' => auth('branch')->id()])->count()}}
+                                                {{\App\Model\Order::dineIn()->whereIn('order_status', ['pending', 'confirmed'])->where(['branch_id' => auth('branch')->id()])->count()}}
                                             </span>
                                         </span>
                                     </a>
@@ -272,7 +272,7 @@
                                     <a class="nav-link " href="{{route('branch.table.order.list',['done'])}}" title="">
                                         <span class="tio-circle nav-indicator-icon"></span>
                                         <span class="text-truncate sidebar--badge-container">
-                                                {{translate('Ready For Serve')}}
+                                                {{translate('ready')}}
                                                 <span class="badge badge-soft-dark badge-pill ml-1">
                                                     {{\App\Model\Order::dineIn()->where(['order_status'=>'done'])->where(['branch_id' => auth('branch')->id()])->count()}}
                                                 </span>

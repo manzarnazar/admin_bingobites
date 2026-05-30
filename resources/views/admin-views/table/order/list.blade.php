@@ -61,14 +61,14 @@
                 <div class="px-4 mt-4">
                     <div class="row g-2">
                         <div class="col-sm-6 col-lg-4">
-                            <a class="order--card h-100" href="{{route('admin.table.order.list',['confirmed'])}}">
+                            <a class="order--card h-100" href="{{route('admin.table.order.list',['new_orders'])}}">
                                 <div class="d-flex justify-content-between align-items-center">
                                     <h6 class="card-subtitle d-flex justify-content-between m-0 align-items-center">
                                         <img src="{{asset('public/assets/admin/img/icons/confirmed.png')}}" alt="dashboard" class="oder--card-icon">
-                                        <span>{{translate('confirmed')}}</span>
+                                        <span>{{translate('new_orders')}}</span>
                                     </h6>
                                     <span class="card-title text-107980">
-                                 {{$orderCount['confirmed']}}
+                                 {{$orderCount['new_orders']}}
                             </span>
                                 </div>
                             </a>
@@ -93,7 +93,7 @@
                                 <div class="d-flex justify-content-between align-items-center">
                                     <h6 class="card-subtitle d-flex justify-content-between m-0 align-items-center">
                                         <img src="{{asset('public/assets/admin/img/icons/review.png')}}" alt="dashboard" class="oder--card-icon">
-                                        <span>{{translate('ready_to_serve')}}</span>
+                                        <span>{{translate('ready')}}</span>
                                     </h6>
                                     <span class="card-title text-00B2BE">
                                 {{$orderCount['done']}}
@@ -231,10 +231,8 @@
                                 @endif
                             </td>
                             <td class="text-capitalize">
-                                @if($order['order_status']=='pending')
-                                    <span class="badge-soft-info px-2 rounded">{{translate('pending')}}</span>
-                                @elseif($order['order_status']=='confirmed')
-                                    <span class="badge-soft-info px-2 rounded">{{translate('confirmed')}}</span>
+                                @if(in_array($order['order_status'], ['pending', 'confirmed']))
+                                    <span class="badge-soft-info px-2 rounded">{{translate('new_orders')}}</span>
                                 @elseif($order['order_status']=='processing')
                                     <span class="badge-soft-warning px-2 rounded">{{translate('processing')}}</span>
                                 @elseif($order['order_status']=='picked_up')
@@ -243,6 +241,8 @@
                                     <span class="badge-soft-success px-2 rounded">{{translate('delivered')}}</span>
                                 @elseif($order['order_status']=='cooking')
                                     <span class="badge-soft-success px-2 rounded">{{translate('cooking')}}</span>
+                                @elseif($order['order_status']=='done')
+                                    <span class="badge-soft-success px-2 rounded">{{translate('ready')}}</span>
                                 @elseif($order['order_status']=='completed')
                                     <span class="badge-soft-success px-2 rounded">{{translate('completed')}}</span>
                                 @else

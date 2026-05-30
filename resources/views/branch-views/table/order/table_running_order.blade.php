@@ -101,18 +101,15 @@
                                         </td>
                                         <td>{{ \App\CentralLogics\Helpers::set_symbol($order['order_amount']) }}</td>
                                         <td class="text-capitalize">
-                                            @if($order['order_status']=='pending')
+                                            @if(in_array($order['order_status'], ['pending', 'confirmed']))
                                                 <span class="badge badge-soft-info ml-2 ml-sm-3">
-                                        <span class="legend-indicator bg-info"></span>{{translate('pending')}}</span>
-                                            @elseif($order['order_status']=='confirmed')
-                                                <span class="badge badge-soft-info ml-2 ml-sm-3">
-                                        <span class="legend-indicator bg-info"></span>{{translate('confirmed')}}</span>
+                                        <span class="legend-indicator bg-info"></span>{{translate('new_orders')}}</span>
                                             @elseif($order['order_status']=='cooking')
                                                 <span class="badge badge-soft-info ml-2 ml-sm-3">
                                         <span class="legend-indicator bg-info"></span>{{translate('cooking')}}</span>
                                             @elseif($order['order_status']=='done')
                                                 <span class="badge badge-soft-info ml-2 ml-sm-3">
-                                        <span class="legend-indicator bg-info"></span>{{translate('done')}}</span>
+                                        <span class="legend-indicator bg-info"></span>{{translate('ready')}}</span>
                                             @elseif($order['order_status']=='completed')
                                                 <span class="badge badge-soft-info ml-2 ml-sm-3">
                                         <span class="legend-indicator bg-info"></span>{{translate('completed')}}</span>
