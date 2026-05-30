@@ -4,6 +4,39 @@
 
 @push('css_or_js')
     @include('admin-views.modifier-template.partials.template-item-styles')
+    <style>
+        .modifier-template-table th,
+        .modifier-template-table td {
+            white-space: normal;
+            vertical-align: middle;
+        }
+        .modifier-template-table .col-sl { width: 3rem; }
+        .modifier-template-table .col-selection { width: 5.5rem; white-space: nowrap; }
+        .modifier-template-table .col-rule { width: 4.5rem; white-space: nowrap; }
+        .modifier-template-table .col-products { width: 6.5rem; white-space: nowrap; }
+        .modifier-template-table .col-status { width: 5rem; white-space: nowrap; }
+        .modifier-template-table .col-action { width: 6.5rem; white-space: nowrap; }
+        .modifier-template-table .col-name {
+            max-width: 11rem;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .modifier-template-table .col-items {
+            max-width: 12rem;
+            width: 12rem;
+        }
+        .modifier-template-table .template-items-cell {
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            word-break: break-word;
+            font-size: 0.8125rem;
+            color: #677788;
+            line-height: 1.35;
+        }
+    </style>
 @endpush
 
 @section('content')
@@ -44,37 +77,38 @@
 
             <div class="py-4">
                 <div class="table-responsive datatable-custom">
-                    <table class="table table-borderless table-thead-bordered table-nowrap table-align-middle card-table">
+                    <table class="table table-borderless table-thead-bordered table-align-middle card-table modifier-template-table">
                         <thead class="thead-light">
                         <tr>
-                            <th>{{translate('SL')}}</th>
-                            <th>{{translate('name')}}</th>
-                            <th>{{translate('selection_type')}}</th>
-                            <th>{{translate('rule')}}</th>
-                            <th>{{translate('items')}}</th>
-                            <th>{{translate('products')}}</th>
-                            <th class="text-center">{{translate('status')}}</th>
-                            <th class="text-center">{{translate('action')}}</th>
+                            <th class="col-sl">{{translate('SL')}}</th>
+                            <th class="col-name">{{translate('name')}}</th>
+                            <th class="col-selection">{{translate('selection_type')}}</th>
+                            <th class="col-rule">{{translate('rule')}}</th>
+                            <th class="col-items">{{translate('items')}}</th>
+                            <th class="col-products">{{translate('products')}}</th>
+                            <th class="text-center col-status">{{translate('status')}}</th>
+                            <th class="text-center col-action">{{translate('action')}}</th>
                         </tr>
                         </thead>
                         <tbody>
                         @foreach($templates as $key => $template)
+                            @php($itemNames = $template->items->pluck('addon.name')->filter()->implode(', '))
                             <tr>
-                                <td>{{$templates->firstItem() + $key}}</td>
-                                <td>
-                                    <div class="font-weight-semibold">{{$template->name}}</div>
+                                <td class="col-sl">{{$templates->firstItem() + $key}}</td>
+                                <td class="col-name">
+                                    <div class="font-weight-semibold text-truncate" title="{{ $template->name }}">{{$template->name}}</div>
                                 </td>
-                                <td class="text-capitalize">{{$template->selection_type}}</td>
-                                <td>{{$template->min_select}} - {{$template->max_select}}</td>
-                                <td>
-                                    <div class="line--limit-2">
-                                        {{ $template->items->pluck('addon.name')->filter()->implode(', ') }}
+                                <td class="text-capitalize col-selection">{{$template->selection_type}}</td>
+                                <td class="col-rule">{{$template->min_select}} - {{$template->max_select}}</td>
+                                <td class="col-items">
+                                    <div class="template-items-cell" title="{{ $itemNames }}">
+                                        {{ $itemNames }}
                                     </div>
                                 </td>
-                                <td>
+                                <td class="col-products">
                                     <span class="badge badge-soft-info">{{ $template->products_count }} {{translate('products')}}</span>
                                 </td>
-                                <td class="text-center">
+                                <td class="text-center col-status">
                                     <label class="toggle-switch toggle-switch-sm" for="status-{{$template->id}}">
                                         <input type="checkbox"
                                                onclick="location.href='{{route('admin.modifier-template.status',[$template->id,$template->is_active?0:1])}}'"
@@ -86,7 +120,7 @@
                                         </span>
                                     </label>
                                 </td>
-                                <td>
+                                <td class="col-action">
                                     <div class="d-flex justify-content-center gap-2">
                                         <a class="btn btn-outline-info btn-sm square-btn" href="{{route('admin.modifier-template.edit',[$template->id])}}">
                                             <i class="tio-edit"></i>
