@@ -36,10 +36,12 @@
                         <div class="col-md-4">
                             <label class="input-label">{{translate('Minimum Selection')}}</label>
                             <input type="number" min="0" name="min_select" class="form-control" value="{{$template->min_select}}" required>
+                            <small class="text-muted">{{translate('Total quantity across all choices in this group (customer app).')}}</small>
                         </div>
                         <div class="col-md-4">
                             <label class="input-label">{{translate('Maximum Selection')}}</label>
                             <input type="number" min="0" name="max_select" class="form-control" value="{{$template->max_select}}" required>
+                            <small class="text-muted">{{translate('Total quantity across all choices in this group (customer app).')}}</small>
                         </div>
                         <div class="col-md-4 d-flex align-items-end">
                             <div class="d-flex gap-4 pb-2">
