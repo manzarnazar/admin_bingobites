@@ -46,15 +46,6 @@ class TableOrderController extends Controller
                     $q->whereBetween('created_at', [Carbon::parse($from)->startOfDay(), Carbon::parse($to)->endOfDay()]);
                 });
 
-        } elseif ($status == 'new_orders') {
-            $orders = $this->order
-                ->with(['customer', 'branch', 'table'])
-                ->where(['branch_id' => auth('branch')->id()])
-                ->whereIn('order_status', ['pending', 'confirmed'])
-                ->when($from && $to, function ($q) use ($from, $to) {
-                    $q->whereBetween('created_at', [Carbon::parse($from)->startOfDay(), Carbon::parse($to)->endOfDay()]);
-                });
-
         } else {
             $orders = $this->order
                 ->with(['customer', 'branch', 'table'])
@@ -79,9 +70,9 @@ class TableOrderController extends Controller
         }
 
         $orderCount = [
-            'new_orders' => $this->order
+            'confirmed' => $this->order
                 ->dineIn()
-                ->whereIn('order_status', ['pending', 'confirmed'])
+                ->where(['order_status' => 'confirmed'])
                 ->where(['branch_id' => auth('branch')->id()])
                 ->when(!is_null($from) && !is_null($to), function ($query) use ($from, $to) {
                     $query->whereBetween('created_at', [$from, Carbon::parse($to)->endOfDay()]);

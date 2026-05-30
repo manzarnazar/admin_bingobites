@@ -55,14 +55,14 @@
                 <div class="px-4 mt-4">
                     <div class="row g-2">
                         <div class="col-sm-6 col-lg-4">
-                            <a class="order--card h-100" href="{{route('branch.table.order.list', ['status' => 'new_orders'])}}">
+                            <a class="order--card h-100" href="{{route('branch.table.order.list', ['status' => 'confirmed'])}}">
                                 <div class="d-flex justify-content-between align-items-center">
                                     <h6 class="card-subtitle d-flex justify-content-between m-0 align-items-center">
                                         <img src="{{asset('public/assets/admin/img/icons/confirmed.png')}}" alt="dashboard" class="oder--card-icon">
-                                        <span>{{translate('new_orders')}}</span>
+                                        <span>{{translate('confirmed')}}</span>
                                     </h6>
                                     <span class="card-title text-107980">
-                                        {{$orderCount['new_orders']}}
+                                        {{$orderCount['confirmed']}}
                             </span>
                                 </div>
                             </a>
@@ -87,7 +87,7 @@
                                 <div class="d-flex justify-content-between align-items-center">
                                     <h6 class="card-subtitle d-flex justify-content-between m-0 align-items-center">
                                         <img src="{{asset('public/assets/admin/img/icons/out_for_delivery.png')}}" alt="dashboard" class="oder--card-icon">
-                                        <span>{{translate('ready')}}</span>
+                                        <span>{{translate('ready_for_serve')}}</span>
                                     </h6>
                                     <span class="card-title text-00B2BE">
                                         {{$orderCount['done']}}
@@ -226,20 +226,16 @@
                                     @endif
                                 </td>
                                 <td class="text-capitalize">
-                                    @if(in_array($order['order_status'], ['pending', 'confirmed']))
-                                        <span class="badge-soft-info px-2 py-1 rounded">{{translate('new_orders')}}</span>
+                                    @if($order['order_status']=='pending')
+                                        <span class="badge-soft-info px-2 py-1 rounded">{{translate('pending')}}</span>
+                                    @elseif($order['order_status']=='confirmed')
+                                        <span class="badge-soft-info px-2 py-1 rounded">{{translate('confirmed')}}</span>
                                     @elseif($order['order_status']=='processing')
                                         <span class="badge-soft-warning px-2 py-1 rounded">{{translate('processing')}}</span>
                                     @elseif($order['order_status']=='out_for_delivery')
                                         <span class="badge-soft-warning px-2 py-1 rounded">{{translate('out_for_delivery')}}</span>
                                     @elseif($order['order_status']=='delivered')
                                         <span class="badge-soft-success px-2 py-1 rounded">{{translate('delivered')}}</span>
-                                    @elseif($order['order_status']=='cooking')
-                                        <span class="badge-soft-success px-2 py-1 rounded">{{translate('cooking')}}</span>
-                                    @elseif($order['order_status']=='done')
-                                        <span class="badge-soft-success px-2 py-1 rounded">{{translate('ready')}}</span>
-                                    @elseif($order['order_status']=='completed')
-                                        <span class="badge-soft-success px-2 py-1 rounded">{{translate('completed')}}</span>
                                     @else
                                         <span class="badge-soft-danger px-2 py-1 rounded">{{str_replace('_',' ',$order['order_status'])}}</span>
                                     @endif
