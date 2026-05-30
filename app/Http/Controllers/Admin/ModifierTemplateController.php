@@ -12,6 +12,7 @@ use Illuminate\Contracts\Support\Renderable;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class ModifierTemplateController extends Controller
 {
@@ -57,22 +58,34 @@ class ModifierTemplateController extends Controller
             'min_select' => 'required|integer|min:0',
             'max_select' => 'required|integer|min:0',
             'items' => 'required|array|min:1',
-            'items.*.add_on_id' => 'required|exists:add_ons,id',
             'items.*.sort_order' => 'nullable|integer|min:0',
             'product_ids' => 'nullable|array',
             'product_ids.*' => 'exists:products,id',
         ]);
 
-        $validated = $this->validateItemSelectionRules($request);
+        $itemValidation = $this->validateTemplateItems($request);
+        if ($itemValidation !== true) {
+            Toastr::error($itemValidation);
+            return back()->withInput();
+        }
+
+        try {
+            $builtItems = $this->buildTemplateItems($request);
+        } catch (ValidationException $e) {
+            Toastr::error(collect($e->errors())->flatten()->first());
+            return back()->withInput();
+        }
+
+        $validated = $this->validateItemSelectionRules($builtItems, $request);
         if ($validated !== true) {
             Toastr::error($validated);
             return back()->withInput();
         }
 
-        DB::transaction(function () use ($request) {
+        DB::transaction(function () use ($request, $builtItems) {
             $template = $this->modifierTemplate->create([
                 'name' => $request->name,
-                'description' => $request->description,
+                'description' => null,
                 'selection_type' => $request->selection_type,
                 'min_select' => (int) $request->min_select,
                 'max_select' => (int) $request->max_select,
@@ -81,16 +94,7 @@ class ModifierTemplateController extends Controller
                 'created_by' => auth('admin')->id(),
             ]);
 
-            $items = [];
-            foreach ($request->items as $index => $item) {
-                $items[] = [
-                    'add_on_id' => $item['add_on_id'],
-                    'sort_order' => $item['sort_order'] ?? $index,
-                    'is_default' => isset($item['is_default']) ? 1 : 0,
-                    'is_active' => isset($item['is_active']) ? 1 : 0,
-                ];
-            }
-            $template->items()->createMany($items);
+            $template->items()->createMany($builtItems);
 
             $this->syncProducts($template, $request->product_ids ?? []);
         });
@@ -116,23 +120,35 @@ class ModifierTemplateController extends Controller
             'min_select' => 'required|integer|min:0',
             'max_select' => 'required|integer|min:0',
             'items' => 'required|array|min:1',
-            'items.*.add_on_id' => 'required|exists:add_ons,id',
             'items.*.sort_order' => 'nullable|integer|min:0',
             'product_ids' => 'nullable|array',
             'product_ids.*' => 'exists:products,id',
         ]);
 
-        $validated = $this->validateItemSelectionRules($request);
+        $itemValidation = $this->validateTemplateItems($request);
+        if ($itemValidation !== true) {
+            Toastr::error($itemValidation);
+            return back()->withInput();
+        }
+
+        try {
+            $builtItems = $this->buildTemplateItems($request);
+        } catch (ValidationException $e) {
+            Toastr::error(collect($e->errors())->flatten()->first());
+            return back()->withInput();
+        }
+
+        $validated = $this->validateItemSelectionRules($builtItems, $request);
         if ($validated !== true) {
             Toastr::error($validated);
             return back()->withInput();
         }
 
-        DB::transaction(function () use ($request, $id) {
+        DB::transaction(function () use ($request, $id, $builtItems) {
             $template = $this->modifierTemplate->findOrFail($id);
             $template->update([
                 'name' => $request->name,
-                'description' => $request->description,
+                'description' => null,
                 'selection_type' => $request->selection_type,
                 'min_select' => (int) $request->min_select,
                 'max_select' => (int) $request->max_select,
@@ -141,17 +157,7 @@ class ModifierTemplateController extends Controller
             ]);
 
             $template->items()->delete();
-
-            $items = [];
-            foreach ($request->items as $index => $item) {
-                $items[] = [
-                    'add_on_id' => $item['add_on_id'],
-                    'sort_order' => $item['sort_order'] ?? $index,
-                    'is_default' => isset($item['is_default']) ? 1 : 0,
-                    'is_active' => isset($item['is_active']) ? 1 : 0,
-                ];
-            }
-            $template->items()->createMany($items);
+            $template->items()->createMany($builtItems);
 
             $this->syncProducts($template, $request->product_ids ?? []);
         });
@@ -212,9 +218,94 @@ class ModifierTemplateController extends Controller
         $template->products()->sync($syncData);
     }
 
-    private function validateItemSelectionRules(Request $request): bool|string
+    private function validateTemplateItems(Request $request): bool|string
     {
-        $itemIds = collect($request->items)->pluck('add_on_id')->filter();
+        foreach ($request->items ?? [] as $index => $item) {
+            $addOnId = $item['add_on_id'] ?? null;
+            $newName = trim((string) ($item['new_name'] ?? ''));
+            $newPrice = $item['new_price'] ?? null;
+            $hasExisting = !empty($addOnId) && $addOnId !== 'new';
+            $hasNew = $addOnId === 'new' || (!$hasExisting && ($newName !== '' || ($newPrice !== null && $newPrice !== '')));
+
+            if ($hasExisting && $newName !== '') {
+                return translate('Each template item must use either an existing addon or a new addon, not both.');
+            }
+
+            if (!$hasExisting && !$hasNew) {
+                return translate('Each template item must have an addon selected or new addon details.');
+            }
+
+            if ($hasExisting && !$this->addOn->where('id', $addOnId)->exists()) {
+                return translate('Selected addon is invalid.');
+            }
+
+            if ($addOnId === 'new' || (!$hasExisting && $newName !== '')) {
+                if ($newName === '') {
+                    return translate('New addon name is required.');
+                }
+                if (mb_strlen($newName) > 255) {
+                    return translate('New addon name is too long.');
+                }
+                if ($newPrice === null || $newPrice === '' || !is_numeric($newPrice) || (float) $newPrice < 0) {
+                    return translate('New addon price must be zero or greater.');
+                }
+            }
+        }
+
+        return true;
+    }
+
+    private function buildTemplateItems(Request $request): array
+    {
+        $items = [];
+
+        foreach ($request->items as $index => $item) {
+            $items[] = [
+                'add_on_id' => $this->resolveItemAddonId($item),
+                'sort_order' => $item['sort_order'] ?? $index,
+                'is_default' => isset($item['is_default']) ? 1 : 0,
+                'is_active' => isset($item['is_active']) ? 1 : 0,
+            ];
+        }
+
+        return $items;
+    }
+
+    private function resolveItemAddonId(array $item): int
+    {
+        $addOnId = $item['add_on_id'] ?? null;
+
+        if (!empty($addOnId) && $addOnId !== 'new') {
+            return (int) $addOnId;
+        }
+
+        $name = trim((string) ($item['new_name'] ?? ''));
+        if ($name === '') {
+            throw ValidationException::withMessages([
+                'items' => [translate('New addon name is required.')],
+            ]);
+        }
+
+        $existing = $this->addOn
+            ->whereRaw('LOWER(name) = ?', [mb_strtolower($name)])
+            ->first();
+
+        if ($existing) {
+            return (int) $existing->id;
+        }
+
+        $addon = new AddOn();
+        $addon->name = $name;
+        $addon->price = (float) ($item['new_price'] ?? 0);
+        $addon->tax = 0;
+        $addon->save();
+
+        return (int) $addon->id;
+    }
+
+    private function validateItemSelectionRules(array $builtItems, Request $request): bool|string
+    {
+        $itemIds = collect($builtItems)->pluck('add_on_id')->filter();
         if ($itemIds->count() !== $itemIds->unique()->count()) {
             return translate('Duplicate addon selected in template items.');
         }

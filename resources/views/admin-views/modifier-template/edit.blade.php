@@ -65,10 +65,6 @@
                                 <label class="mb-0"><input type="checkbox" name="is_active" {{$template->is_active ? 'checked' : ''}}> {{translate('Active')}}</label>
                             </div>
                         </div>
-                        <div class="col-12">
-                            <label class="input-label">{{translate('Description')}}</label>
-                            <textarea name="description" class="form-control" rows="2">{{$template->description}}</textarea>
-                        </div>
                     </div>
 
                     <hr>
@@ -81,30 +77,7 @@
 
                     <div id="template-item-rows">
                         @foreach($template->items as $index => $item)
-                            <div class="row g-2 template-item-row mb-2" data-row="{{$index}}">
-                                <div class="col-md-6">
-                                    <select name="items[{{$index}}][add_on_id]" class="form-control" required>
-                                        <option value="">{{translate('Select Addon')}}</option>
-                                        @foreach($addons as $addon)
-                                            <option value="{{$addon->id}}" {{$addon->id == $item->add_on_id ? 'selected' : ''}}>
-                                                {{$addon->name}}
-                                            </option>
-                                        @endforeach
-                                    </select>
-                                </div>
-                                <div class="col-md-2">
-                                    <input type="number" min="0" class="form-control" name="items[{{$index}}][sort_order]" value="{{$item->sort_order}}" placeholder="{{translate('Sort')}}">
-                                </div>
-                                <div class="col-md-2 d-flex align-items-center">
-                                    <label class="template-toggle-label"><input type="checkbox" name="items[{{$index}}][is_default]" {{$item->is_default ? 'checked' : ''}}> {{translate('Default')}}</label>
-                                </div>
-                                <div class="col-md-2">
-                                    <div class="template-item-actions">
-                                        <label class="template-toggle-label"><input type="checkbox" name="items[{{$index}}][is_active]" {{$item->is_active ? 'checked' : ''}}> {{translate('Active')}}</label>
-                                        <button type="button" class="btn btn-danger btn-sm remove-template-item-row"><i class="tio-delete"></i></button>
-                                    </div>
-                                </div>
-                            </div>
+                            @include('admin-views.modifier-template.partials.template-item-row', ['index' => $index, 'addons' => $addons, 'item' => $item])
                         @endforeach
                     </div>
 
@@ -135,35 +108,23 @@
 @endsection
 
 @push('script_2')
+    @include('admin-views.modifier-template.partials.template-item-scripts')
     <script>
         "use strict";
-        let modifierTemplateRow = {{max($template->items->count(), 1)}};
+        let modifierTemplateRow = {{ max($template->items->count(), 1) }};
+
+        initTemplateItemRows();
 
         $('#add-template-item-row').on('click', function () {
-            const addonOptions = `{!! $addons->map(function ($addon) { return '<option value="' . $addon->id . '">' . e($addon->name) . '</option>'; })->implode('') !!}`;
-            const rowHtml = `
-                <div class="row g-2 template-item-row mb-2" data-row="${modifierTemplateRow}">
-                    <div class="col-md-6">
-                        <select name="items[${modifierTemplateRow}][add_on_id]" class="form-control" required>
-                            <option value="">{{translate('Select Addon')}}</option>
-                            ${addonOptions}
-                        </select>
-                    </div>
-                    <div class="col-md-2">
-                        <input type="number" min="0" class="form-control" name="items[${modifierTemplateRow}][sort_order]" placeholder="{{translate('Sort')}}">
-                    </div>
-                    <div class="col-md-2 d-flex align-items-center">
-                        <label class="template-toggle-label"><input type="checkbox" name="items[${modifierTemplateRow}][is_default]"> {{translate('Default')}}</label>
-                    </div>
-                    <div class="col-md-2">
-                        <div class="template-item-actions">
-                            <label class="template-toggle-label"><input type="checkbox" name="items[${modifierTemplateRow}][is_active]" checked> {{translate('Active')}}</label>
-                            <button type="button" class="btn btn-danger btn-sm remove-template-item-row"><i class="tio-delete"></i></button>
-                        </div>
-                    </div>
-                </div>`;
-            $('#template-item-rows').append(rowHtml);
+            const rowHtml = getTemplateItemRowHtml(modifierTemplateRow);
+            const $row = $(rowHtml);
+            $('#template-item-rows').append($row);
+            toggleTemplateItemRow($row);
             modifierTemplateRow++;
+        });
+
+        $(document).on('change', '.template-addon-select', function () {
+            toggleTemplateItemRow($(this).closest('.template-item-row'));
         });
 
         $(document).on('click', '.remove-template-item-row', function () {

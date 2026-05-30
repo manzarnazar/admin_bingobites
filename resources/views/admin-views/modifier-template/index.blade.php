@@ -81,9 +81,6 @@
                                 <td>{{$templates->firstItem() + $key}}</td>
                                 <td>
                                     <div class="font-weight-semibold">{{$template->name}}</div>
-                                    @if($template->description)
-                                        <small class="text-muted">{{$template->description}}</small>
-                                    @endif
                                 </td>
                                 <td class="text-capitalize">{{$template->selection_type}}</td>
                                 <td>{{$template->min_select}} - {{$template->max_select}}</td>
@@ -187,10 +184,6 @@
                                     </label>
                                 </div>
                             </div>
-                            <div class="col-12">
-                                <label class="input-label">{{translate('Description')}}</label>
-                                <textarea name="description" class="form-control" rows="2"></textarea>
-                            </div>
                         </div>
 
                         <hr>
@@ -201,28 +194,7 @@
                             </button>
                         </div>
                         <div id="template-item-rows">
-                            <div class="row g-2 template-item-row mb-2" data-row="0">
-                                <div class="col-md-6">
-                                    <select name="items[0][add_on_id]" class="form-control" required>
-                                        <option value="">{{translate('Select Addon')}}</option>
-                                        @foreach($addons as $addon)
-                                            <option value="{{$addon->id}}">{{$addon->name}}</option>
-                                        @endforeach
-                                    </select>
-                                </div>
-                                <div class="col-md-2">
-                                    <input type="number" min="0" class="form-control" name="items[0][sort_order]" placeholder="{{translate('Sort')}}">
-                                </div>
-                                <div class="col-md-2 d-flex align-items-center">
-                                    <label class="template-toggle-label"><input type="checkbox" name="items[0][is_default]"> {{translate('Default')}}</label>
-                                </div>
-                                <div class="col-md-2">
-                                    <div class="template-item-actions">
-                                    <label class="template-toggle-label"><input type="checkbox" name="items[0][is_active]" checked> {{translate('Active')}}</label>
-                                    <button type="button" class="btn btn-danger btn-sm remove-template-item-row"><i class="tio-delete"></i></button>
-                                    </div>
-                                </div>
-                            </div>
+                            @include('admin-views.modifier-template.partials.template-item-row', ['index' => 0, 'addons' => $addons])
                         </div>
 
                         <hr>
@@ -252,35 +224,23 @@
 @endsection
 
 @push('script_2')
+    @include('admin-views.modifier-template.partials.template-item-scripts')
     <script>
         "use strict";
         let modifierTemplateRow = 1;
 
+        initTemplateItemRows();
+
         $('#add-template-item-row').on('click', function () {
-            const addonOptions = `{!! $addons->map(function ($addon) { return '<option value="' . $addon->id . '">' . e($addon->name) . '</option>'; })->implode('') !!}`;
-            const rowHtml = `
-                <div class="row g-2 template-item-row mb-2" data-row="${modifierTemplateRow}">
-                    <div class="col-md-6">
-                        <select name="items[${modifierTemplateRow}][add_on_id]" class="form-control" required>
-                            <option value="">{{translate('Select Addon')}}</option>
-                            ${addonOptions}
-                        </select>
-                    </div>
-                    <div class="col-md-2">
-                        <input type="number" min="0" class="form-control" name="items[${modifierTemplateRow}][sort_order]" placeholder="{{translate('Sort')}}">
-                    </div>
-                    <div class="col-md-2 d-flex align-items-center">
-                        <label class="template-toggle-label"><input type="checkbox" name="items[${modifierTemplateRow}][is_default]"> {{translate('Default')}}</label>
-                    </div>
-                    <div class="col-md-2">
-                        <div class="template-item-actions">
-                            <label class="template-toggle-label"><input type="checkbox" name="items[${modifierTemplateRow}][is_active]" checked> {{translate('Active')}}</label>
-                            <button type="button" class="btn btn-danger btn-sm remove-template-item-row"><i class="tio-delete"></i></button>
-                        </div>
-                    </div>
-                </div>`;
-            $('#template-item-rows').append(rowHtml);
+            const rowHtml = getTemplateItemRowHtml(modifierTemplateRow);
+            const $row = $(rowHtml);
+            $('#template-item-rows').append($row);
+            toggleTemplateItemRow($row);
             modifierTemplateRow++;
+        });
+
+        $(document).on('change', '.template-addon-select', function () {
+            toggleTemplateItemRow($(this).closest('.template-item-row'));
         });
 
         $(document).on('click', '.remove-template-item-row', function () {
