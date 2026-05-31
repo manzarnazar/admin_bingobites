@@ -93,10 +93,7 @@ class PosOrderService
         $orderDetails = [];
         $totalPriceForDiscountValidation = 0;
 
-        $orderId = 100000 + $this->order->all()->count() + 1;
-        if ($this->order->find($orderId)) {
-            $orderId = $this->order->orderBy('id', 'DESC')->first()->id + 1;
-        }
+        $orderId = Helpers::generate_order_id();
 
         foreach ($items as $c) {
             $discountOnProduct = ($c['discount'] * $c['quantity']);

@@ -9,6 +9,7 @@ use App\Model\BusinessSetting;
 use App\Model\Currency;
 use App\Model\DMReview;
 use App\Model\Order;
+use App\Model\OrderDetail;
 use App\Model\Product;
 use App\Model\ProductByBranch;
 use App\Model\Review;
@@ -1126,6 +1127,19 @@ class Helpers
         if (Storage::disk('public')->exists($dir . $image)) Storage::disk('public')->delete($dir . $image);
 
         return true;
+    }
+
+    public static function generate_order_id(): int
+    {
+        $orderId = max(100001, (int)(Order::max('id') ?? 99999) + 1);
+
+        while (Order::where('id', $orderId)->exists()) {
+            $orderId++;
+        }
+
+        OrderDetail::where('order_id', $orderId)->delete();
+
+        return $orderId;
     }
 
     public static function order_details_formatter($details)

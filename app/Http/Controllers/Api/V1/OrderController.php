@@ -207,7 +207,7 @@ class OrderController extends Controller
         try {
             DB::beginTransaction();
 
-            $orderId = 100000 + $this->order->all()->count() + 1;
+            $orderId = Helpers::generate_order_id();
             $order = [
                 'id' => $orderId,
                 'user_id' => $userId,
@@ -241,8 +241,7 @@ class OrderController extends Controller
                 'updated_at' => now()
             ];
 
-            $insertedOrderId = $this->order->insertGetId($order);
-
+            $this->order->insertGetId($order);
 
             foreach ($request['cart'] as $c) {
                 $product = $this->product->find($c['product_id']);

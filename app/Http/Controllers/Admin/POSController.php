@@ -469,10 +469,7 @@ class POSController extends Controller
         $product_price = 0;
         $order_details = [];
 
-        $order_id = 100000 + $this->order->all()->count() + 1;
-        if ($this->order->find($order_id)) {
-            $order_id = $this->order->orderBy('id', 'DESC')->first()->id + 1;
-        }
+        $order_id = Helpers::generate_order_id();
 
         $order = $this->order;
         $order->id = $order_id;
