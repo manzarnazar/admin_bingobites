@@ -89,7 +89,7 @@ class KitchenController extends Controller
         if ($orderStatus == 'cooking') {
             $orders = $this->order
                 ->where(['order_status' => $orderStatus, 'branch_id' => $branchId])
-                ->orderBy('created_at', 'ASC')
+                ->latest()
                 ->paginate($limit, ['*'], 'page', $offset);
 
         } elseif ($orderStatus == 'pending') {
