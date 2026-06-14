@@ -236,6 +236,7 @@ Route::group(['namespace' => 'Api\V1', 'middleware' => 'localization'], function
         Route::get('order/list', [KitchenController::class, 'getOrderList']);
         Route::get('order/search', [KitchenController::class, 'search']);
         Route::get('order/filter', [KitchenController::class, 'filterByStatus']);
+        Route::get('order/counts', [KitchenController::class, 'getOrderCounts']);
         Route::get('order/details', [KitchenController::class, 'getOrderDetails']);
         Route::put('order/status', [KitchenController::class, 'changeStatus']);
         Route::put('update-fcm-token', [KitchenController::class, 'updateFcmToken']);

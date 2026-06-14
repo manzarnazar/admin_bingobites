@@ -13,6 +13,7 @@ use App\User;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Validator;
 use function App\CentralLogics\translate;
 
@@ -27,6 +28,75 @@ class KitchenController extends Controller
         private OrderStatusService $orderStatusService,
     )
     {}
+
+    private function resolveBranchId(): ?int
+    {
+        $chefBranch = $this->chefBranch->where('user_id', auth()->user()->id)->first();
+
+        return $chefBranch?->branch_id;
+    }
+
+    private function attachItemsSummary(LengthAwarePaginator $orders): LengthAwarePaginator
+    {
+        $orders->getCollection()->transform(function ($order) {
+            $itemsSummary = $order->details->map(function ($detail) {
+                $productDetails = $detail->product_details;
+                if (!is_array($productDetails)) {
+                    $productDetails = json_decode($productDetails, true) ?? [];
+                }
+
+                return [
+                    'quantity' => (int) $detail->quantity,
+                    'name' => $productDetails['name'] ?? '',
+                ];
+            })->values();
+
+            $order->setAttribute('items_summary', $itemsSummary);
+            $order->makeHidden(['details']);
+
+            return $order;
+        });
+
+        return $orders;
+    }
+
+    private function paginateKitchenOrders($query, int $limit, int $offset): LengthAwarePaginator
+    {
+        return $this->attachItemsSummary(
+            $query
+                ->with(['details:id,order_id,quantity,product_details'])
+                ->latest()
+                ->paginate($limit, ['*'], 'page', $offset)
+        );
+    }
+
+    /**
+     * @return JsonResponse
+     */
+    public function getOrderCounts(): JsonResponse
+    {
+        $branchId = $this->resolveBranchId();
+        if (!$branchId) {
+            return response()->json([
+                'errors' => [
+                    ['code' => 'branch', 'message' => translate('Branch not found')]
+                ]
+            ], 404);
+        }
+
+        return response()->json([
+            'pending' => $this->order
+                ->where('branch_id', $branchId)
+                ->whereIn('order_status', ['pending', 'confirmed'])
+                ->count(),
+            'cooking' => $this->order
+                ->where(['order_status' => 'cooking', 'branch_id' => $branchId])
+                ->count(),
+            'done' => $this->order
+                ->where(['order_status' => 'done', 'branch_id' => $branchId])
+                ->count(),
+        ], 200);
+    }
 
     /**
      * @param Request $request
@@ -60,16 +130,18 @@ class KitchenController extends Controller
         $search = $request['search'];
         $key = explode(' ', $request['search']);
 
-        $orders = $this->order
-            ->where('branch_id', $branchId)
-            ->whereIn('order_status', ['pending', 'confirmed', 'cooking', 'done'])
-            ->when($search != null, function ($query) use ($key) {
-                foreach ($key as $value) {
-                    $query->Where('id', 'like', "%{$value}%");
-                }
-            })
-            ->latest()
-            ->paginate(Helpers::getPagination());
+        $orders = $this->paginateKitchenOrders(
+            $this->order
+                ->where('branch_id', $branchId)
+                ->whereIn('order_status', ['pending', 'confirmed', 'cooking', 'done'])
+                ->when($search != null, function ($query) use ($key) {
+                    foreach ($key as $value) {
+                        $query->Where('id', 'like', "%{$value}%");
+                    }
+                }),
+            Helpers::getPagination(),
+            1
+        );
 
         return response()->json($orders, 200);
     }
@@ -88,23 +160,25 @@ class KitchenController extends Controller
 
         $orderStatus = $request->order_status;
         if ($orderStatus == 'cooking') {
-            $orders = $this->order
-                ->where(['order_status' => $orderStatus, 'branch_id' => $branchId])
-                ->latest()
-                ->paginate($limit, ['*'], 'page', $offset);
-
+            $orders = $this->paginateKitchenOrders(
+                $this->order->where(['order_status' => $orderStatus, 'branch_id' => $branchId]),
+                $limit,
+                $offset
+            );
         } elseif ($orderStatus == 'pending') {
-            $orders = $this->order
-                ->where('branch_id', $branchId)
-                ->whereIn('order_status', ['pending', 'confirmed'])
-                ->latest()
-                ->paginate($limit, ['*'], 'page', $offset);
-
+            $orders = $this->paginateKitchenOrders(
+                $this->order
+                    ->where('branch_id', $branchId)
+                    ->whereIn('order_status', ['pending', 'confirmed']),
+                $limit,
+                $offset
+            );
         } else {
-            $orders = $this->order
-                ->where(['order_status' => $orderStatus, 'branch_id' => $branchId])
-                ->latest()
-                ->paginate($limit, ['*'], 'page', $offset);
+            $orders = $this->paginateKitchenOrders(
+                $this->order->where(['order_status' => $orderStatus, 'branch_id' => $branchId]),
+                $limit,
+                $offset
+            );
         }
 
         return response()->json($orders, 200);
@@ -149,7 +223,7 @@ class KitchenController extends Controller
     {
         $validator = Validator::make($request->all(), [
             'order_id' => 'required',
-            'order_status' => 'required|in:cooking,done',
+            'order_status' => 'required|in:cooking,done,completed',
         ]);
 
         if ($validator->fails()) {
@@ -237,6 +311,42 @@ class KitchenController extends Controller
                     ['code' => 'order', 'message' => translate('Status did not changed')]
                 ]
             ], 401);
+        }
+
+        if ($newStatus === 'completed') {
+            if ($oldStatus !== 'done') {
+                return response()->json([
+                    'errors' => [
+                        ['code' => 'order_status', 'message' => translate('Invalid status transition')]
+                    ]
+                ], 403);
+            }
+
+            if (in_array($order->order_type, ['delivery', 'home_delivery'], true)) {
+                return response()->json([
+                    'errors' => [
+                        ['code' => 'order_status', 'message' => translate('Invalid status transition')]
+                    ]
+                ], 403);
+            }
+
+            $updated = Order::query()
+                ->where('id', $order->id)
+                ->where('order_status', 'done')
+                ->update(['order_status' => 'completed']);
+
+            if (!$updated) {
+                return response()->json([
+                    'errors' => [
+                        ['code' => 'order', 'message' => translate('Status did not changed')]
+                    ]
+                ], 401);
+            }
+
+            return response()->json([
+                'orders' => $order->fresh(),
+                'message' => translate('Order status updated!')
+            ], 200);
         }
 
         return response()->json([
