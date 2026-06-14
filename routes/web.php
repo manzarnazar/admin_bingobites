@@ -15,6 +15,7 @@ use App\Http\Controllers\FlutterwaveController;
 use App\Http\Controllers\BkashPaymentController;
 use App\Http\Controllers\MercadoPagoController;
 use App\Http\Controllers\FirebaseController;
+use App\Http\Controllers\CronController;
 use App\Http\Controllers\HomeController;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\View;
@@ -43,6 +44,13 @@ Route::get('/image-proxy', function () {
 });
 
 Route::post('/subscribeToTopic', [FirebaseController::class, 'subscribeToTopic']);
+
+/**
+ * Scheduled tasks (requires CRON_SECRET in .env — see Hostinger cron setup).
+ * Call every minute via Hostinger Cron Jobs or: * * * * * php artisan schedule:run
+ */
+Route::get('cron/schedule', [CronController::class, 'runScheduler']);
+Route::get('cron/auto-complete-cooking', [CronController::class, 'autoCompleteCookingOrders']);
 
 /**
  * Pages
