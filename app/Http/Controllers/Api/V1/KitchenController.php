@@ -8,8 +8,8 @@ use App\Model\Branch;
 use App\Model\ChefBranch;
 use App\Model\Order;
 use App\Model\OrderDetail;
+use App\Services\OrderStatusService;
 use App\User;
-use Brian2694\Toastr\Facades\Toastr;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -19,11 +19,12 @@ use function App\CentralLogics\translate;
 class KitchenController extends Controller
 {
     public function __construct(
-        private ChefBranch   $chefBranch,
-        private Branch       $branch,
-        private Order        $order,
-        private User         $user,
-        private OrderDetail  $orderDetail
+        private ChefBranch        $chefBranch,
+        private Branch            $branch,
+        private Order             $order,
+        private User              $user,
+        private OrderDetail       $orderDetail,
+        private OrderStatusService $orderStatusService,
     )
     {}
 
@@ -208,33 +209,28 @@ class KitchenController extends Controller
             $order->delivery_time = $readyAt->format('H:i:s');
             $order->order_status = 'cooking';
 
-            $this->notifyOrderCustomer($order, 'cooking');
+            if ($order->update()) {
+                $this->orderStatusService->notifyOrderCustomerForStatus($order, 'cooking');
+                return response()->json(['orders' => $order, 'message' => translate('Order status updated!')], 200);
+            }
+
+            return response()->json([
+                'errors' => [
+                    ['code' => 'order', 'message' => translate('Status did not changed')]
+                ]
+            ], 401);
         }
 
         if ($newStatus === 'done') {
-            $order->order_status = 'done';
-
-            $deliverymanFcmToken = $order->delivery_man?->fcm_token;
-            try {
-                $data = [
-                    'title' => translate('Order'),
-                    'description' => translate('cooking done'),
-                    'order_id' => $order->id,
-                    'image' => '',
-                    'type' => '',
-                ];
-                if (!is_null($deliverymanFcmToken)) {
-                    Helpers::send_push_notif_to_device($deliverymanFcmToken, $data);
-                }
-            } catch (\Exception $e) {
-                Toastr::warning(translate('Push notification failed for DeliveryMan!'));
+            if ($this->orderStatusService->markOrderDone($order)) {
+                return response()->json(['orders' => $order->fresh(), 'message' => translate('Order status updated!')], 200);
             }
 
-            $this->notifyOrderCustomer($order, 'done');
-        }
-
-        if ($order->update()) {
-            return response()->json(['orders' => $order, 'message' => translate('Order status updated!')], 200);
+            return response()->json([
+                'errors' => [
+                    ['code' => 'order', 'message' => translate('Status did not changed')]
+                ]
+            ], 401);
         }
 
         return response()->json([
@@ -242,71 +238,6 @@ class KitchenController extends Controller
                 ['code' => 'order', 'message' => translate('Status did not changed')]
             ]
         ], 401);
-    }
-
-    private function notifyOrderCustomer(Order $order, string $status): void
-    {
-        $message = Helpers::order_status_update_message($status);
-        if (!$message) {
-            $message = $status === 'cooking'
-                ? translate('Your order is being prepared')
-                : translate('Your order is ready');
-        }
-
-        $local = $order->is_guest == 0 ? ($order->customer?->language_code ?? 'en') : ($order->guest?->language_code ?? 'en');
-        if ($local != 'en') {
-            $statusKey = Helpers::order_status_message_key($status);
-            $translatedMessage = \App\Model\BusinessSetting::with('translations')
-                ->where(['key' => $statusKey])
-                ->first();
-            if (isset($translatedMessage?->translations)) {
-                foreach ($translatedMessage->translations as $translation) {
-                    if ($local == $translation->locale) {
-                        $message = $translation->value;
-                    }
-                }
-            }
-        }
-
-        $restaurantName = Helpers::get_business_settings('restaurant_name');
-        $deliverymanName = $order->delivery_man
-            ? $order->delivery_man->f_name . ' ' . $order->delivery_man->l_name
-            : '';
-        $customerName = $order->is_guest == 0
-            ? ($order->customer ? $order->customer->f_name . ' ' . $order->customer->l_name : '')
-            : ($order->guest ? $order->guest->f_name . ' ' . $order->guest->l_name : '');
-
-        $value = Helpers::text_variable_data_format(
-            value: $message,
-            user_name: $customerName,
-            restaurant_name: $restaurantName,
-            delivery_man_name: $deliverymanName,
-            order_id: $order->id
-        );
-
-        $customerFcmToken = null;
-        if ($order->is_guest == 0) {
-            $customerFcmToken = $order->customer?->cm_firebase_token;
-        } elseif ($order->is_guest == 1) {
-            $customerFcmToken = $order->guest?->fcm_token;
-        }
-
-        if (!$value || !$customerFcmToken) {
-            return;
-        }
-
-        try {
-            Helpers::send_push_notif_to_device($customerFcmToken, [
-                'title' => translate('Order'),
-                'description' => $value,
-                'order_id' => $order->id,
-                'image' => '',
-                'type' => 'order_status',
-                'order_status' => $order->order_status,
-            ]);
-        } catch (\Exception $e) {
-            // ignore push failures
-        }
     }
 
     /**
