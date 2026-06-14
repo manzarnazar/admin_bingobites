@@ -33,6 +33,8 @@ class Order extends Model
         'is_cutlery_required' => 'integer',
         'bring_change_amount' => 'float',
         'referral_discount' => 'float',
+        'preparation_time' => 'integer',
+        'cooking_started_at' => 'datetime',
     ];
 
     protected $fillable = [
@@ -53,6 +55,11 @@ class Order extends Model
         'is_cutlery_required',
         'bring_change_amount',
         'referral_discount',
+        'order_status',
+        'preparation_time',
+        'delivery_date',
+        'delivery_time',
+        'cooking_started_at',
     ];
 
     public function details(): HasMany

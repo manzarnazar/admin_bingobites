@@ -203,13 +203,19 @@ class KitchenController extends Controller
             }
 
             $preparationMinutes = (int) $request->preparation_time;
-            $order->preparation_time = $preparationMinutes;
             $readyAt = Carbon::now()->addMinutes($preparationMinutes);
-            $order->delivery_date = $readyAt->format('Y-m-d');
-            $order->delivery_time = $readyAt->format('H:i:s');
-            $order->order_status = 'cooking';
 
-            if ($order->update()) {
+            $order->update([
+                'preparation_time' => $preparationMinutes,
+                'delivery_date' => $readyAt->format('Y-m-d'),
+                'delivery_time' => $readyAt->format('H:i:s'),
+                'order_status' => 'cooking',
+                'cooking_started_at' => Carbon::now(),
+            ]);
+
+            $order->refresh();
+
+            if ($order->order_status === 'cooking') {
                 $this->orderStatusService->notifyOrderCustomerForStatus($order, 'cooking');
                 return response()->json(['orders' => $order, 'message' => translate('Order status updated!')], 200);
             }

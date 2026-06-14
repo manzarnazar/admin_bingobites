@@ -13,8 +13,14 @@ class OrderStatusService
     {
         $preparationTime = (int) ($order->preparation_time ?? 0);
 
-        if ($preparationTime > 0 && $order->updated_at) {
-            return Carbon::parse($order->updated_at)->addMinutes($preparationTime);
+        if ($preparationTime > 0) {
+            if ($order->cooking_started_at) {
+                return Carbon::parse($order->cooking_started_at)->addMinutes($preparationTime);
+            }
+
+            if ($order->updated_at) {
+                return Carbon::parse($order->updated_at)->addMinutes($preparationTime);
+            }
         }
 
         if ($order->delivery_date && $order->delivery_time) {
@@ -41,11 +47,17 @@ class OrderStatusService
         }
 
         $order->loadMissing(['customer', 'delivery_man', 'guest']);
-        $order->order_status = 'done';
 
-        if (!$order->save()) {
+        $updated = Order::query()
+            ->where('id', $order->id)
+            ->where('order_status', 'cooking')
+            ->update(['order_status' => 'done']);
+
+        if (!$updated) {
             return false;
         }
+
+        $order->order_status = 'done';
 
         $this->notifyDeliveryman($order);
         $this->notifyOrderCustomer($order, 'done');
