@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\CentralLogics\Helpers;
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\StripePaymentController;
 use App\Library\Payer;
 use App\Library\Payment as PaymentInfo;
 use App\Library\Receiver;
@@ -95,9 +96,24 @@ class DigitalPaymentController extends Controller
         );
 
         $receiver_info = new Receiver('receiver_name','example.png');
-        $redirect_link = Payment::generate_link($payer, $payment_info, $receiver_info);
-        return response()->json(['redirect_link' => $redirect_link], 200);
+        return $this->buildPaymentResponse($request, $payer, $payment_info, $receiver_info);
 
+    }
+
+    private function buildPaymentResponse(Request $request, Payer $payer, PaymentInfo $payment_info, Receiver $receiver_info)
+    {
+        $paymentRequest = Payment::create_payment_request($payer, $payment_info, $receiver_info);
+
+        if ($request->payment_method === 'stripe' && $request->payment_platform === 'app') {
+            return app(StripePaymentController::class)->createMobilePaymentIntent($paymentRequest);
+        }
+
+        $redirect_link = Payment::get_redirect_link($paymentRequest);
+        if ($redirect_link === false) {
+            return response()->json(['errors' => [['message' => translate('Invalid payment method')]]], 400);
+        }
+
+        return response()->json(['redirect_link' => $redirect_link], 200);
     }
 
     public function payment(Request $request)
@@ -215,9 +231,7 @@ class DigitalPaymentController extends Controller
 
         $receiver_info = new Receiver('receiver_name','example.png');
 
-        $redirect_link = Payment::generate_link($payer, $payment_info, $receiver_info);
-
-        return response()->json(['redirect_link' => $redirect_link], 200);
+        return $this->buildPaymentResponse($request, $payer, $payment_info, $receiver_info);
     }
 
 }

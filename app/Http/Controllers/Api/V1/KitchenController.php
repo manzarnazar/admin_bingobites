@@ -64,7 +64,11 @@ class KitchenController extends Controller
     {
         return $this->attachItemsSummary(
             $query
-                ->with(['details:id,order_id,quantity,product_details'])
+                ->with([
+                    'details:id,order_id,quantity,product_details',
+                    'customer:id,f_name,l_name',
+                    'guest:id,f_name,l_name',
+                ])
                 ->latest()
                 ->paginate($limit, ['*'], 'page', $offset)
         );
@@ -223,7 +227,7 @@ class KitchenController extends Controller
     {
         $validator = Validator::make($request->all(), [
             'order_id' => 'required',
-            'order_status' => 'required|in:cooking,done,completed',
+            'order_status' => 'required|in:cooking,done',
         ]);
 
         if ($validator->fails()) {
@@ -311,42 +315,6 @@ class KitchenController extends Controller
                     ['code' => 'order', 'message' => translate('Status did not changed')]
                 ]
             ], 401);
-        }
-
-        if ($newStatus === 'completed') {
-            if ($oldStatus !== 'done') {
-                return response()->json([
-                    'errors' => [
-                        ['code' => 'order_status', 'message' => translate('Invalid status transition')]
-                    ]
-                ], 403);
-            }
-
-            if (in_array($order->order_type, ['delivery', 'home_delivery'], true)) {
-                return response()->json([
-                    'errors' => [
-                        ['code' => 'order_status', 'message' => translate('Invalid status transition')]
-                    ]
-                ], 403);
-            }
-
-            $updated = Order::query()
-                ->where('id', $order->id)
-                ->where('order_status', 'done')
-                ->update(['order_status' => 'completed']);
-
-            if (!$updated) {
-                return response()->json([
-                    'errors' => [
-                        ['code' => 'order', 'message' => translate('Status did not changed')]
-                    ]
-                ], 401);
-            }
-
-            return response()->json([
-                'orders' => $order->fresh(),
-                'message' => translate('Order status updated!')
-            ], 200);
         }
 
         return response()->json([

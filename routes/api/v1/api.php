@@ -32,6 +32,7 @@ use App\Http\Controllers\Api\V1\TableController;
 use App\Http\Controllers\Api\V1\TagController;
 use App\Http\Controllers\Api\V1\WishlistController;
 use App\Http\Controllers\Api\V1\DigitalPaymentController;
+use App\Http\Controllers\StripePaymentController;
 
 Route::group(['namespace' => 'Api\V1', 'middleware' => 'localization'], function () {
 
@@ -257,6 +258,7 @@ Route::group(['namespace' => 'Api\V1', 'middleware' => 'localization'], function
 
     Route::post('payment-mobile', [DigitalPaymentController::class, 'payment']);
     Route::post('add-fund-wallet', [DigitalPaymentController::class, 'addFund'])->middleware('auth:api');
+    Route::post('stripe/confirm', [StripePaymentController::class, 'confirmPaymentIntent']);
 
     Route::group(['prefix' => 'pos', 'middleware' => ['auth:admin_api', 'pos_module']], function () {
         Route::get('bootstrap', [PosController::class, 'bootstrap']);

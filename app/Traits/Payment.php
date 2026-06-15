@@ -7,7 +7,7 @@ use App\Models\PaymentRequest;
 
 trait Payment
 {
-    public static function generate_link(object $payer, object $payment_info, Object $receiver)
+    public static function create_payment_request(object $payer, object $payment_info, object $receiver): PaymentRequest
     {
         if ($payment_info->getPaymentAmount() <= 0) {
             throw new InvalidArgumentException(translate('Payment amount can not be 0'));
@@ -34,6 +34,11 @@ trait Payment
         $payment->payment_platform = $payment_info->getPaymentPlatForm();
         $payment->save();
 
+        return $payment;
+    }
+
+    public static function get_redirect_link(PaymentRequest $payment): string|false
+    {
         $routes = [
             'ssl_commerz' => 'payment/sslcommerz/pay',
             'stripe' => 'payment/stripe/pay',
@@ -74,10 +79,15 @@ trait Payment
         ];
         if (array_key_exists($payment->payment_method, $routes)) {
             return url("{$routes[$payment->payment_method]}/?payment_id={$payment->id}");
-        } else {
-            return false;
         }
 
-        //from system
+        return false;
+    }
+
+    public static function generate_link(object $payer, object $payment_info, object $receiver): string|false
+    {
+        $payment = self::create_payment_request($payer, $payment_info, $receiver);
+
+        return self::get_redirect_link($payment);
     }
 }
