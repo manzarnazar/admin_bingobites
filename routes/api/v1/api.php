@@ -259,6 +259,7 @@ Route::group(['namespace' => 'Api\V1', 'middleware' => 'localization'], function
     Route::post('payment-mobile', [DigitalPaymentController::class, 'payment']);
     Route::post('add-fund-wallet', [DigitalPaymentController::class, 'addFund'])->middleware('auth:api');
     Route::post('stripe/confirm', [StripePaymentController::class, 'confirmPaymentIntent']);
+    Route::post('stripe/payment-intent', [StripePaymentController::class, 'createPaymentIntentFromRequest']);
 
     Route::group(['prefix' => 'pos', 'middleware' => ['auth:admin_api', 'pos_module']], function () {
         Route::get('bootstrap', [PosController::class, 'bootstrap']);

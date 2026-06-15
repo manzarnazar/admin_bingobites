@@ -134,16 +134,20 @@ class StripePaymentController extends Controller
 
         Stripe::setApiKey($this->config_values->api_key);
 
-        $paymentIntent = PaymentIntent::create([
-            'amount' => (int) round($unpaidPayment->payment_amount * 100),
-            'currency' => strtolower($unpaidPayment->currency_code ?? 'usd'),
-            'automatic_payment_methods' => ['enabled' => true],
-            'metadata' => ['payment_id' => $unpaidPayment->id],
-        ]);
+        if (!empty($unpaidPayment->transaction_id) && str_starts_with($unpaidPayment->transaction_id, 'pi_')) {
+            $paymentIntent = PaymentIntent::retrieve($unpaidPayment->transaction_id);
+        } else {
+            $paymentIntent = PaymentIntent::create([
+                'amount' => (int) round($unpaidPayment->payment_amount * 100),
+                'currency' => strtolower($unpaidPayment->currency_code ?? 'usd'),
+                'automatic_payment_methods' => ['enabled' => true],
+                'metadata' => ['payment_id' => $unpaidPayment->id],
+            ]);
 
-        $this->payment::where(['id' => $unpaidPayment->id])->update([
-            'transaction_id' => $paymentIntent->id,
-        ]);
+            $this->payment::where(['id' => $unpaidPayment->id])->update([
+                'transaction_id' => $paymentIntent->id,
+            ]);
+        }
 
         return response()->json([
             'stripe_native' => true,
@@ -153,6 +157,24 @@ class StripePaymentController extends Controller
             'amount' => (int) round($unpaidPayment->payment_amount * 100),
             'currency' => strtolower($unpaidPayment->currency_code ?? 'usd'),
         ], 200);
+    }
+
+    public function createPaymentIntentFromRequest(Request $request): JsonResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'payment_id' => 'required|uuid',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => $this->error_processor($validator)], 400);
+        }
+
+        $paymentRequest = $this->payment::where(['id' => $request['payment_id']])->where(['is_paid' => 0])->first();
+        if (!isset($paymentRequest)) {
+            return response()->json(['errors' => [['message' => 'Payment not found']]], 404);
+        }
+
+        return $this->createMobilePaymentIntent($paymentRequest);
     }
 
     public function confirmPaymentIntent(Request $request): JsonResponse
