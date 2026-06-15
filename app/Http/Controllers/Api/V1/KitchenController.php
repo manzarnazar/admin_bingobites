@@ -67,7 +67,7 @@ class KitchenController extends Controller
                 ->with([
                     'details:id,order_id,quantity,product_details',
                     'customer:id,f_name,l_name',
-                    'guest:id,f_name,l_name',
+                    'guest:id',
                 ])
                 ->latest()
                 ->paginate($limit, ['*'], 'page', $offset)
