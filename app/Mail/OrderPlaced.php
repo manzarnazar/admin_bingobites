@@ -25,9 +25,6 @@ class OrderPlaced extends Mailable
         $mailData = BingoBitesOrderMailHelper::build($this->order_id);
         $order = $mailData['order'];
 
-        $mailData['header_cid'] = url('assets/email/bingo-bites/header.png');
-        $mailData['logo_cid'] = url('assets/email/bingo-bites/logo.png');
-
         $pdfHtml = View::make('email-templates.bingo-bites-invoice', $mailData)->render();
 
         $mpdf = new Mpdf([
