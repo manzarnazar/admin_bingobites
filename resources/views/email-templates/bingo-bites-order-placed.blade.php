@@ -143,7 +143,7 @@
                         <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center">
                             <tr>
                                 <td style="font-size:11px;color:{{ $black }};padding:4px 8px;line-height:{{ $lh }};">
-                                    @include('email-templates.partials.bingo-bites-icon', ['name' => 'location', 'mode' => 'email', 'size' => 14]) {{ $store['address'] }}
+                                    {{ $store['address'] }}
                                 </td>
                             </tr>
                             <tr>

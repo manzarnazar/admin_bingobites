@@ -29,7 +29,6 @@
     $logoFile = $logo_path ?? public_path('assets/email/bingo-bites/logo.png');
     $iconCustomer = $icons['customer'] ?? public_path('assets/email/bingo-bites/icons/customer.png');
     $iconStore = $icons['store'] ?? public_path('assets/email/bingo-bites/icons/store.png');
-    $iconLocation = $icons['location'] ?? public_path('assets/email/bingo-bites/icons/location.png');
     $invoiceDate = $order_date_long ?? $order_date;
     $invoiceTime = $order_time_pdf ?? $order_time;
 @endphp
@@ -148,9 +147,7 @@
                     <td style="font-size:11px;font-weight:bold;color:{{ $black }};padding-bottom:6px;line-height:{{ $lh }};">{{ $store['name'] }}</td>
                 </tr>
                 <tr>
-                    <td style="font-size:9px;color:{{ $black }};padding-bottom:4px;line-height:{{ $lh }};">
-                        <img src="{{ $iconLocation }}" width="11" height="11" style="vertical-align:middle;margin-right:5px;"> {{ $store['address'] }}
-                    </td>
+                    <td style="font-size:9px;color:{{ $black }};padding-bottom:4px;line-height:{{ $lh }};">{{ $store['address'] }}</td>
                 </tr>
                 <tr>
                     <td style="font-size:9px;color:{{ $black }};padding-bottom:4px;line-height:{{ $lh }};">{{ $store['phone'] }}</td>
