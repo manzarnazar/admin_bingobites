@@ -69,23 +69,23 @@
 <table width="100%" cellspacing="0" cellpadding="0" border="0" class="section-divider" style="margin:14px 0;"><tr><td>&nbsp;</td></tr></table>
 <table width="100%" cellspacing="0" cellpadding="0" border="0" style="margin:14px 0 18px;border:1px solid #E8E8E8;">
     <tr>
-        <td width="50%" valign="top" style="padding:14px 16px;border-right:1px solid #E8E8E8;">
-            <div style="font-size:10px;font-weight:bold;color:{{ $red }};text-transform:uppercase;margin-bottom:10px;">&#128100; Customer Details</div>
-            <div style="font-size:12px;font-weight:bold;color:#222222;margin-bottom:4px;">{{ $customer['name'] }}</div>
+        <td width="50%" valign="top" style="padding:16px 18px;border-right:1px solid #E8E8E8;">
+            <div style="font-size:10px;font-weight:bold;color:{{ $red }};text-transform:uppercase;margin-bottom:12px;line-height:1.4;">&#128100; Customer Details</div>
+            <div style="font-size:12px;font-weight:bold;color:#222222;margin-bottom:8px;line-height:1.5;">{{ $customer['name'] }}</div>
             @if ($customer['email'])
-            <div style="font-size:10px;color:{{ $grey }};margin-bottom:2px;">{{ $customer['email'] }}</div>
+            <div style="font-size:10px;color:{{ $grey }};margin-bottom:6px;line-height:1.6;">{{ $customer['email'] }}</div>
             @endif
             @if ($customer['phone'])
-            <div style="font-size:10px;color:{{ $grey }};">{{ $customer['phone'] }}</div>
+            <div style="font-size:10px;color:{{ $grey }};line-height:1.6;">{{ $customer['phone'] }}</div>
             @endif
         </td>
-        <td width="50%" valign="top" style="padding:14px 16px;">
-            <div style="font-size:10px;font-weight:bold;color:{{ $red }};text-transform:uppercase;margin-bottom:10px;">&#127978; Store Details</div>
-            <div style="font-size:12px;font-weight:bold;color:#222222;margin-bottom:4px;">{{ $store['name'] }}</div>
-            <div style="font-size:10px;color:{{ $grey }};line-height:1.6;margin-bottom:2px;">{{ $store['address'] }}</div>
-            <div style="font-size:10px;color:{{ $grey }};margin-bottom:2px;">&#128222; {{ $store['phone'] }}</div>
+        <td width="50%" valign="top" style="padding:16px 18px;">
+            <div style="font-size:10px;font-weight:bold;color:{{ $red }};text-transform:uppercase;margin-bottom:12px;line-height:1.4;">&#127978; Store Details</div>
+            <div style="font-size:12px;font-weight:bold;color:#222222;margin-bottom:8px;line-height:1.5;">{{ $store['name'] }}</div>
+            <div style="font-size:10px;color:{{ $grey }};line-height:1.7;margin-bottom:6px;">{{ $store['address'] }}</div>
+            <div style="font-size:10px;color:{{ $grey }};margin-bottom:6px;line-height:1.6;">&#128222; {{ $store['phone'] }}</div>
             @if ($store['email'])
-            <div style="font-size:10px;color:{{ $grey }};">&#9993; {{ $store['email'] }}</div>
+            <div style="font-size:10px;color:{{ $grey }};line-height:1.6;">&#9993; {{ $store['email'] }}</div>
             @endif
         </td>
     </tr>
@@ -98,10 +98,10 @@
 {{-- Footer --}}
 <table width="100%" cellspacing="0" cellpadding="0" border="0" style="margin-top:20px;">
     <tr>
-        <td width="18%" valign="top" style="padding-right:10px;">
+        <td width="14%" valign="top" style="padding-right:4px;">
             <img src="{{ $logoFile }}" width="72" style="width:72px;display:block;">
         </td>
-        <td width="52%" valign="top" style="padding:0 8px;">
+        <td width="56%" valign="top" style="padding-left:4px;">
             <div style="font-size:11px;font-weight:bold;color:#222222;margin-bottom:4px;">{{ $store['name'] }}</div>
             <div style="font-size:9px;color:{{ $grey }};line-height:1.7;">
                 &#128205; {{ $store['address'] }}<br>

@@ -52,11 +52,11 @@
 @else
     <table width="100%" cellspacing="0" cellpadding="0" border="0" style="border-collapse:collapse;">
         <thead>
-            <tr style="background-color:#000000;color:#FFFFFF;">
-                <th align="left" width="8%" style="font-size:10px;font-weight:bold;padding:11px 10px;text-transform:uppercase;">Qty</th>
-                <th align="left" width="32%" style="font-size:10px;font-weight:bold;padding:11px 10px;text-transform:uppercase;">Item</th>
-                <th align="left" width="40%" style="font-size:10px;font-weight:bold;padding:11px 10px;text-transform:uppercase;">Variation / Add-ons</th>
-                <th align="right" width="20%" style="font-size:10px;font-weight:bold;padding:11px 10px;text-transform:uppercase;">Price</th>
+            <tr style="background-color:#000000;">
+                <th align="left" width="8%" style="font-size:10px;font-weight:bold;padding:11px 10px;text-transform:uppercase;color:#FFFFFF;background-color:#000000;">Qty</th>
+                <th align="left" width="32%" style="font-size:10px;font-weight:bold;padding:11px 10px;text-transform:uppercase;color:#FFFFFF;background-color:#000000;">Item</th>
+                <th align="left" width="40%" style="font-size:10px;font-weight:bold;padding:11px 10px;text-transform:uppercase;color:#FFFFFF;background-color:#000000;">Variation / Add-ons</th>
+                <th align="right" width="20%" style="font-size:10px;font-weight:bold;padding:11px 10px;text-transform:uppercase;color:#FFFFFF;background-color:#000000;">Price</th>
             </tr>
         </thead>
         <tbody>
