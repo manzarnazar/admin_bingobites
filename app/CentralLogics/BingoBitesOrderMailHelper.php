@@ -47,8 +47,6 @@ class BingoBitesOrderMailHelper
             'brand_red' => self::BRAND_RED,
             'header_path' => $headerPath,
             'logo_path' => $logoPath,
-            'header_src' => self::toDataUri($headerPath),
-            'logo_src' => self::toDataUri($logoPath),
             'order_type_label' => self::orderTypeLabel($order->order_type),
             'order_date' => Carbon::parse($order->created_at)->format('d/m/Y'),
             'order_time' => Carbon::parse($order->created_at)->format('h:i a'),
@@ -70,17 +68,6 @@ class BingoBitesOrderMailHelper
             'dine_in' => 'Dine In',
             default => ucfirst(str_replace('_', ' ', (string) $orderType)),
         };
-    }
-
-    private static function toDataUri(string $path): string
-    {
-        if (!is_file($path)) {
-            return '';
-        }
-
-        $mime = mime_content_type($path) ?: 'image/png';
-
-        return 'data:' . $mime . ';base64,' . base64_encode((string) file_get_contents($path));
     }
 
     private static function buildCustomerBlock(Order $order, $address): array

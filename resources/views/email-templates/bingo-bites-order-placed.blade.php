@@ -8,8 +8,8 @@
 <body style="margin:0;padding:0;background-color:#F2F2F2;font-family:Arial,Helvetica,sans-serif;">
 @php
     $red = $brand_red ?? '#E31E24';
-    $headerSrc = $header_src ?? '';
-    $logoSrc = $logo_src ?? '';
+    $headerSrc = 'cid:bingo_header';
+    $logoSrc = 'cid:bingo_logo';
     $cardStyle = 'background-color:#FFFFFF;border:1px solid #E8E8E8;border-radius:8px;padding:16px;';
     $sectionTitle = 'font-size:13px;font-weight:bold;color:#333333;margin:0 0 10px 0;text-transform:uppercase;letter-spacing:0.3px;';
     $labelStyle = 'font-size:12px;color:#888888;padding:3px 0;';

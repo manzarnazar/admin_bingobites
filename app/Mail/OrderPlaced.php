@@ -8,6 +8,7 @@ use Illuminate\Mail\Mailable;
 use Illuminate\Queue\SerializesModels;
 use Mpdf\Mpdf;
 use Illuminate\Support\Facades\View;
+use Symfony\Component\Mime\Email;
 
 class OrderPlaced extends Mailable
 {
@@ -40,6 +41,14 @@ class OrderPlaced extends Mailable
 
         return $this->subject('Order Confirmed - Bingo Bites #' . $order->id)
             ->view('email-templates.bingo-bites-order-placed', $mailData)
+            ->withSymfonyMessage(function (Email $message) use ($mailData) {
+                if (is_file($mailData['header_path'])) {
+                    $message->embedFromPath($mailData['header_path'], 'bingo_header');
+                }
+                if (is_file($mailData['logo_path'])) {
+                    $message->embedFromPath($mailData['logo_path'], 'bingo_logo');
+                }
+            })
             ->attachData($pdfContent, 'Invoice_Order_' . $order->id . '.pdf', [
                 'mime' => 'application/pdf',
             ]);
