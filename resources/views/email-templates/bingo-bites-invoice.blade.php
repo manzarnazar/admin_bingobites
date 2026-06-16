@@ -9,7 +9,7 @@
             padding: 0 0 20px;
             font-family: 'DejaVu Sans', sans-serif;
             font-size: 11px;
-            color: #333333;
+            color: #000000;
         }
         .section-divider td {
             border-top: 1px solid #E5E5E5;
@@ -23,7 +23,7 @@
 <body>
 @php
     $red = $brand_red ?? '#E31E24';
-    $grey = '#888888';
+    $black = '#000000';
     $lh = '1.15';
     $headerFile = $header_path ?? public_path('assets/email/bingo-bites/header.png');
     $logoFile = $logo_path ?? public_path('assets/email/bingo-bites/logo.png');
@@ -46,36 +46,31 @@
 {{-- Title --}}
 <table width="100%" cellspacing="0" cellpadding="0" border="0" style="margin-top:18px;">
     <tr>
-        <td align="center" style="font-size:20px;font-weight:bold;color:#222222;letter-spacing:1px;padding-bottom:14px;line-height:{{ $lh }};">TAX INVOICE</td>
+        <td align="center" style="font-size:20px;font-weight:bold;color:{{ $black }};letter-spacing:1px;padding-bottom:14px;line-height:{{ $lh }};">TAX INVOICE</td>
     </tr>
 </table>
 
 {{-- Invoice meta --}}
 <table width="100%" cellspacing="0" cellpadding="0" border="0" style="margin-bottom:6px;">
     <tr>
-        <td width="55%" valign="top" style="font-size:11px;line-height:{{ $lh }};">
-            <span style="color:{{ $grey }};">Invoice Number:</span>
-            <span style="font-weight:bold;color:#222222;"> INV-{{ $order->id }}</span><br>
-            <span style="color:{{ $grey }};">Order Number:</span>
-            <span style="font-weight:bold;color:{{ $red }};"> #{{ $order->id }}</span><br>
-            <span style="color:{{ $grey }};">Order Type:</span>
-            <span style="color:#222222;"> {{ $order_type_label }}</span>
+        <td width="55%" valign="top" style="font-size:11px;line-height:{{ $lh }};color:{{ $black }};">
+            Invoice Number: <strong>INV-{{ $order->id }}</strong><br>
+            Order Number: <strong style="color:{{ $red }};">#{{ $order->id }}</strong><br>
+            Order Type: {{ $order_type_label }}
         </td>
-        <td width="45%" valign="top" align="right" style="font-size:11px;line-height:{{ $lh }};">
-            <span style="color:{{ $grey }};">Date:</span>
-            <span style="color:#222222;"> {{ $invoiceDate }}</span><br>
-            <span style="color:{{ $grey }};">Time:</span>
-            <span style="color:#222222;"> {{ $invoiceTime }}</span>
+        <td width="45%" valign="top" align="right" style="font-size:11px;line-height:{{ $lh }};color:{{ $black }};">
+            Date: {{ $invoiceDate }}<br>
+            Time: {{ $invoiceTime }}
         </td>
     </tr>
 </table>
 
 <table width="100%" cellspacing="0" cellpadding="0" border="0" class="section-divider" style="margin:14px 0;"><tr><td>&nbsp;</td></tr></table>
 
-{{-- Customer & Store (top border only) --}}
+{{-- Customer & Store (top border + vertical divider) --}}
 <table width="100%" cellspacing="0" cellpadding="0" border="0" style="margin:14px 0 18px;border-top:1px solid #E8E8E8;">
     <tr>
-        <td width="50%" valign="top" style="padding:18px 20px 18px 0;">
+        <td width="50%" valign="top" style="padding:18px 20px 18px 0;border-right:1px solid #E8E8E8;">
             <table width="100%" cellspacing="0" cellpadding="0" border="0">
                 <tr>
                     <td style="font-size:10px;font-weight:bold;color:{{ $red }};text-transform:uppercase;padding-bottom:12px;line-height:{{ $lh }};">
@@ -83,16 +78,16 @@
                     </td>
                 </tr>
                 <tr>
-                    <td style="font-size:12px;font-weight:bold;color:#222222;padding-bottom:8px;line-height:{{ $lh }};">{{ $customer['name'] }}</td>
+                    <td style="font-size:11px;color:{{ $black }};padding-bottom:8px;line-height:{{ $lh }};">Name: {{ $customer['name'] }}</td>
                 </tr>
                 @if ($customer['email'])
                 <tr>
-                    <td style="font-size:10px;color:{{ $grey }};padding-bottom:8px;line-height:{{ $lh }};">{{ $customer['email'] }}</td>
+                    <td style="font-size:11px;color:{{ $black }};padding-bottom:8px;line-height:{{ $lh }};">Email: {{ $customer['email'] }}</td>
                 </tr>
                 @endif
                 @if ($customer['phone'])
                 <tr>
-                    <td style="font-size:10px;color:{{ $grey }};line-height:{{ $lh }};">{{ $customer['phone'] }}</td>
+                    <td style="font-size:11px;color:{{ $black }};line-height:{{ $lh }};">Phone: {{ $customer['phone'] }}</td>
                 </tr>
                 @endif
             </table>
@@ -105,19 +100,17 @@
                     </td>
                 </tr>
                 <tr>
-                    <td style="font-size:12px;font-weight:bold;color:#222222;padding-bottom:8px;line-height:{{ $lh }};">{{ $store['name'] }}</td>
+                    <td style="font-size:12px;font-weight:bold;color:{{ $black }};padding-bottom:8px;line-height:{{ $lh }};">{{ $store['name'] }}</td>
                 </tr>
                 <tr>
-                    <td style="font-size:10px;color:{{ $grey }};padding-bottom:8px;line-height:{{ $lh }};">
-                        <img src="{{ $iconLocation }}" width="12" height="12" style="vertical-align:middle;margin-right:6px;"> {{ $store['address'] }}
-                    </td>
+                    <td style="font-size:11px;color:{{ $black }};padding-bottom:8px;line-height:{{ $lh }};">{{ $store['address'] }}</td>
                 </tr>
                 <tr>
-                    <td style="font-size:10px;color:{{ $grey }};padding-bottom:8px;line-height:{{ $lh }};">{{ $store['phone'] }}</td>
+                    <td style="font-size:11px;color:{{ $black }};padding-bottom:8px;line-height:{{ $lh }};">{{ $store['phone'] }}</td>
                 </tr>
                 @if ($store['email'])
                 <tr>
-                    <td style="font-size:10px;color:{{ $grey }};line-height:{{ $lh }};">{{ $store['email'] }}</td>
+                    <td style="font-size:11px;color:{{ $black }};line-height:{{ $lh }};">{{ $store['email'] }}</td>
                 </tr>
                 @endif
             </table>
@@ -138,23 +131,23 @@
         <td width="56%" valign="top" style="padding-left:4px;">
             <table width="100%" cellspacing="0" cellpadding="0" border="0">
                 <tr>
-                    <td style="font-size:11px;font-weight:bold;color:#222222;padding-bottom:6px;line-height:{{ $lh }};">{{ $store['name'] }}</td>
+                    <td style="font-size:11px;font-weight:bold;color:{{ $black }};padding-bottom:6px;line-height:{{ $lh }};">{{ $store['name'] }}</td>
                 </tr>
                 <tr>
-                    <td style="font-size:9px;color:{{ $grey }};padding-bottom:4px;line-height:{{ $lh }};">
+                    <td style="font-size:9px;color:{{ $black }};padding-bottom:4px;line-height:{{ $lh }};">
                         <img src="{{ $iconLocation }}" width="11" height="11" style="vertical-align:middle;margin-right:5px;"> {{ $store['address'] }}
                     </td>
                 </tr>
                 <tr>
-                    <td style="font-size:9px;color:{{ $grey }};padding-bottom:4px;line-height:{{ $lh }};">{{ $store['phone'] }}</td>
+                    <td style="font-size:9px;color:{{ $black }};padding-bottom:4px;line-height:{{ $lh }};">{{ $store['phone'] }}</td>
                 </tr>
                 @if ($store['email'])
                 <tr>
-                    <td style="font-size:9px;color:{{ $grey }};padding-bottom:4px;line-height:{{ $lh }};">{{ $store['email'] }}</td>
+                    <td style="font-size:9px;color:{{ $black }};padding-bottom:4px;line-height:{{ $lh }};">{{ $store['email'] }}</td>
                 </tr>
                 @endif
                 <tr>
-                    <td style="font-size:9px;color:{{ $grey }};line-height:{{ $lh }};">{{ $store['website'] }}</td>
+                    <td style="font-size:9px;color:{{ $black }};line-height:{{ $lh }};">{{ $store['website'] }}</td>
                 </tr>
             </table>
         </td>
@@ -166,7 +159,7 @@
 
 <table width="100%" cellspacing="0" cellpadding="0" border="0" style="margin-top:22px;">
     <tr>
-        <td align="center" style="font-size:8px;color:#AAAAAA;padding-top:10px;border-top:1px solid #E5E5E5;line-height:{{ $lh }};">
+        <td align="center" style="font-size:8px;color:{{ $black }};padding-top:10px;border-top:1px solid #E5E5E5;line-height:{{ $lh }};">
             This is a computer generated tax invoice and does not require a signature.
         </td>
     </tr>
