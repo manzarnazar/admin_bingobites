@@ -49,7 +49,9 @@ class BingoBitesOrderMailHelper
             'logo_path' => $logoPath,
             'order_type_label' => self::orderTypeLabel($order->order_type),
             'order_date' => Carbon::parse($order->created_at)->format('d/m/Y'),
+            'order_date_long' => Carbon::parse($order->created_at)->format('d M Y'),
             'order_time' => Carbon::parse($order->created_at)->format('h:i a'),
+            'order_time_pdf' => Carbon::parse($order->created_at)->format('h:i A'),
             'estimated_ready_time' => $readyAt->format('h:i a'),
             'customer' => $customer,
             'location' => $location,
@@ -63,7 +65,7 @@ class BingoBitesOrderMailHelper
     public static function orderTypeLabel(?string $orderType): string
     {
         return match ($orderType) {
-            'pos', 'take_away' => 'Takeaway',
+            'pos', 'take_away' => 'Take Away',
             'delivery' => 'Delivery',
             'dine_in' => 'Dine In',
             default => ucfirst(str_replace('_', ' ', (string) $orderType)),
@@ -191,6 +193,7 @@ class BingoBitesOrderMailHelper
             $items[] = [
                 'quantity' => (int) $detail->quantity,
                 'name' => $name,
+                'display_name' => ucwords(strtolower($name)),
                 'variation_text' => $variationText,
                 'addon_text' => implode(', ', $addonParts),
                 'display_detail' => trim(implode(', ', array_filter([$variationText, implode(', ', $addonParts)]))),
