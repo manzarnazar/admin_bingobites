@@ -52,7 +52,7 @@
                                     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="{{ $cardStyle }}">
                                         <tr>
                                             <td>
-                                                <p style="{{ $sectionTitle }}">&#128203; Order Details</p>
+                                                <p style="{{ $sectionTitle }}">@include('email-templates.partials.bingo-bites-icon', ['name' => 'order_details', 'mode' => 'email']) Order Details</p>
                                                 <p style="{{ $labelStyle }}">Order Number</p>
                                                 <p style="margin:0 0 8px;font-size:15px;font-weight:bold;color:{{ $red }};">#{{ $order->id }}</p>
                                                 <p style="{{ $labelStyle }}">Order Type</p>
@@ -72,7 +72,7 @@
                                     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="{{ $cardStyle }}">
                                         <tr>
                                             <td>
-                                                <p style="{{ $sectionTitle }}">&#128100; Customer Information</p>
+                                                <p style="{{ $sectionTitle }}">@include('email-templates.partials.bingo-bites-icon', ['name' => 'customer', 'mode' => 'email']) Customer Information</p>
                                                 <p style="{{ $labelStyle }}">Name</p>
                                                 <p style="{{ $valueStyle }}">{{ $customer['name'] }}</p>
                                                 @if ($customer['email'])
@@ -98,7 +98,7 @@
                         <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="{{ $cardStyle }}">
                             <tr>
                                 <td>
-                                    <p style="{{ $sectionTitle }}">&#128205; {{ $location['title'] }}</p>
+                                    <p style="{{ $sectionTitle }}">@include('email-templates.partials.bingo-bites-icon', ['name' => 'location', 'mode' => 'email']) {{ $location['title'] }}</p>
                                     <p style="margin:0 0 4px;font-size:14px;font-weight:bold;color:#333333;">{{ $location['name'] }}</p>
                                     @if ($location['address'])
                                     <p style="margin:0 0 4px;font-size:13px;color:#666666;line-height:1.5;">{{ $location['address'] }}</p>
@@ -118,7 +118,7 @@
                         <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="{{ $cardStyle }}">
                             <tr>
                                 <td>
-                                    <p style="{{ $sectionTitle }}">&#128722; Order Summary</p>
+                                    <p style="{{ $sectionTitle }}">@include('email-templates.partials.bingo-bites-icon', ['name' => 'order_details', 'mode' => 'email']) Order Summary</p>
                                     @include('email-templates.partials.bingo-bites-order-summary', ['mode' => 'email'])
                                 </td>
                             </tr>
@@ -132,7 +132,7 @@
                         <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:#FFF0F0;border-radius:6px;">
                             <tr>
                                 <td style="padding:12px 16px;font-size:13px;color:#666666;">
-                                    &#128206; Your tax invoice is attached to this email.
+                                    Your tax invoice is attached to this email.
                                 </td>
                             </tr>
                         </table>
@@ -150,18 +150,20 @@
                         <img src="{{ $logoSrc }}" alt="Bingo Bites" width="80" style="display:block;margin:0 auto 16px;border:0;">
                         <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center">
                             <tr>
-                                <td style="font-size:11px;color:#888888;padding:2px 8px;">&#128205; {{ $store['address'] }}</td>
+                                <td style="font-size:11px;color:#888888;padding:4px 8px;">
+                                    @include('email-templates.partials.bingo-bites-icon', ['name' => 'location', 'mode' => 'email', 'size' => 14]) {{ $store['address'] }}
+                                </td>
                             </tr>
                             <tr>
-                                <td style="font-size:11px;color:#888888;padding:2px 8px;">&#128222; {{ $store['phone'] }}</td>
+                                <td style="font-size:11px;color:#888888;padding:4px 8px;">{{ $store['phone'] }}</td>
                             </tr>
                             @if ($store['email'])
                             <tr>
-                                <td style="font-size:11px;color:#888888;padding:2px 8px;">&#9993; {{ $store['email'] }}</td>
+                                <td style="font-size:11px;color:#888888;padding:4px 8px;">{{ $store['email'] }}</td>
                             </tr>
                             @endif
                             <tr>
-                                <td style="font-size:11px;color:#888888;padding:2px 8px;">&#127760; {{ $store['website'] }}</td>
+                                <td style="font-size:11px;color:#888888;padding:4px 8px;">{{ $store['website'] }}</td>
                             </tr>
                         </table>
                     </td>

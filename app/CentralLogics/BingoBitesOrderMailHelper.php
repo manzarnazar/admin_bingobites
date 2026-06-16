@@ -12,6 +12,28 @@ class BingoBitesOrderMailHelper
     public const BRAND_RED = '#E31E24';
     public const ASSET_DIR = 'assets/email/bingo-bites';
 
+    public static function iconPaths(): array
+    {
+        $dir = public_path(self::ASSET_DIR . '/icons');
+
+        return [
+            'customer' => $dir . '/customer.png',
+            'store' => $dir . '/store.png',
+            'order_details' => $dir . '/order-details.png',
+            'location' => $dir . '/location.png',
+        ];
+    }
+
+    public static function iconCids(): array
+    {
+        return [
+            'customer' => 'icon_customer',
+            'store' => 'icon_store',
+            'order_details' => 'icon_order_details',
+            'location' => 'icon_location',
+        ];
+    }
+
     public static function build(int $orderId): array
     {
         $order = Order::with([
@@ -47,6 +69,8 @@ class BingoBitesOrderMailHelper
             'brand_red' => self::BRAND_RED,
             'header_path' => $headerPath,
             'logo_path' => $logoPath,
+            'icons' => self::iconPaths(),
+            'icon_cids' => self::iconCids(),
             'order_type_label' => self::orderTypeLabel($order->order_type),
             'order_date' => Carbon::parse($order->created_at)->format('d/m/Y'),
             'order_date_long' => Carbon::parse($order->created_at)->format('d M Y'),

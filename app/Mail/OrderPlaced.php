@@ -42,11 +42,19 @@ class OrderPlaced extends Mailable
         return $this->subject('Order Confirmed - Bingo Bites #' . $order->id)
             ->view('email-templates.bingo-bites-order-placed', $mailData)
             ->withSymfonyMessage(function (Email $message) use ($mailData) {
-                if (is_file($mailData['header_path'])) {
-                    $message->embedFromPath($mailData['header_path'], 'bingo_header');
+                $embeds = [
+                    'bingo_header' => $mailData['header_path'],
+                    'bingo_logo' => $mailData['logo_path'],
+                ];
+
+                foreach ($mailData['icons'] as $name => $path) {
+                    $embeds[$mailData['icon_cids'][$name]] = $path;
                 }
-                if (is_file($mailData['logo_path'])) {
-                    $message->embedFromPath($mailData['logo_path'], 'bingo_logo');
+
+                foreach ($embeds as $cid => $path) {
+                    if (is_file($path)) {
+                        $message->embedFromPath($path, $cid);
+                    }
                 }
             })
             ->attachData($pdfContent, 'Invoice_Order_' . $order->id . '.pdf', [
