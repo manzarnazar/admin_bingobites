@@ -58,7 +58,6 @@
                                                 <p style="{{ $textStyle }}">Order Type: {{ $order_type_label }}</p>
                                                 <p style="{{ $textStyle }}">Order Date: {{ $order_date }}</p>
                                                 <p style="{{ $textStyle }}">Order Time: {{ $order_time }}</p>
-                                                <p style="{{ $textStyle }}">Estimated Ready Time: <strong style="color:{{ $red }};">{{ $estimated_ready_time }}</strong></p>
                                             </td>
                                         </tr>
                                     </table>

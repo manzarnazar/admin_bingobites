@@ -53,14 +53,28 @@
 {{-- Invoice meta --}}
 <table width="100%" cellspacing="0" cellpadding="0" border="0" style="margin-bottom:6px;">
     <tr>
-        <td width="55%" valign="top" style="font-size:11px;line-height:{{ $lh }};color:{{ $black }};">
-            Invoice Number: <strong>INV-{{ $order->id }}</strong><br>
-            Order Number: <strong style="color:{{ $red }};">#{{ $order->id }}</strong><br>
-            Order Type: {{ $order_type_label }}
+        <td width="55%" valign="top">
+            <table width="100%" cellspacing="0" cellpadding="0" border="0">
+                <tr>
+                    <td style="font-size:11px;color:{{ $black }};padding-bottom:8px;line-height:{{ $lh }};">Invoice Number: <strong>INV-{{ $order->id }}</strong></td>
+                </tr>
+                <tr>
+                    <td style="font-size:11px;color:{{ $black }};padding-bottom:8px;line-height:{{ $lh }};">Order Number: <strong style="color:{{ $red }};">#{{ $order->id }}</strong></td>
+                </tr>
+                <tr>
+                    <td style="font-size:11px;color:{{ $black }};line-height:{{ $lh }};">Order Type: {{ $order_type_label }}</td>
+                </tr>
+            </table>
         </td>
-        <td width="45%" valign="top" align="right" style="font-size:11px;line-height:{{ $lh }};color:{{ $black }};">
-            Date: {{ $invoiceDate }}<br>
-            Time: {{ $invoiceTime }}
+        <td width="45%" valign="top" align="right">
+            <table width="100%" cellspacing="0" cellpadding="0" border="0">
+                <tr>
+                    <td align="right" style="font-size:11px;color:{{ $black }};padding-bottom:8px;line-height:{{ $lh }};">Date: {{ $invoiceDate }}</td>
+                </tr>
+                <tr>
+                    <td align="right" style="font-size:11px;color:{{ $black }};line-height:{{ $lh }};">Time: {{ $invoiceTime }}</td>
+                </tr>
+            </table>
         </td>
     </tr>
 </table>
