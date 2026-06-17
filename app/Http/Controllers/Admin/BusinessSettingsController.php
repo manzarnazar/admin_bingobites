@@ -161,9 +161,31 @@ class BusinessSettingsController extends Controller
             'value' => $request['currency'],
         ]);
 
-        $currentLogo = $this->business_setting->where(['key' => 'logo'])->first();
+        $currentLightLogo = $this->business_setting->where(['key' => 'light_logo'])->first();
+        $currentDarkLogo = $this->business_setting->where(['key' => 'dark_logo'])->first();
+        $fallbackLogo = $this->business_setting->where(['key' => 'logo'])->first()?->value;
+
+        $lightLogoValue = $currentLightLogo?->value ?? $fallbackLogo;
+        $darkLogoValue = $currentDarkLogo?->value ?? $fallbackLogo;
+
+        if ($request->hasFile('light_logo')) {
+            $lightLogoValue = Helpers::update('restaurant/', $lightLogoValue, 'png', $request->file('light_logo'));
+        }
+
+        if ($request->hasFile('dark_logo')) {
+            $darkLogoValue = Helpers::update('restaurant/', $darkLogoValue, 'png', $request->file('dark_logo'));
+        }
+
+        $this->InsertOrUpdateBusinessData(['key' => 'light_logo'], [
+            'value' => $lightLogoValue,
+        ]);
+
+        $this->InsertOrUpdateBusinessData(['key' => 'dark_logo'], [
+            'value' => $darkLogoValue,
+        ]);
+
         $this->InsertOrUpdateBusinessData(['key' => 'logo'], [
-            'value' => $request->has('logo') ? Helpers::update('restaurant/', $currentLogo->value, 'png', $request->file('logo')) : $currentLogo->value
+            'value' => $lightLogoValue,
         ]);
 
         $this->InsertOrUpdateBusinessData(['key' => 'phone'], [

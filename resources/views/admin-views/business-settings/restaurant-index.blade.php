@@ -124,12 +124,13 @@
                         </div>
 
                         <div class="col-md-4 col-sm-6">
-                            @php($logo=\App\Model\BusinessSetting::where('key','logo')->first()->value)
+                            @php($light_logo=\App\CentralLogics\Helpers::get_business_settings('light_logo') ?? \App\CentralLogics\Helpers::get_business_settings('logo'))
                             <div class="form-group">
-                                <label class="text-dark">{{translate('logo')}}</label><small style="color: red">*
+                                <label class="text-dark">{{translate('Light Logo')}}</label><small style="color: red">*
                                     ( {{translate('ratio')}} 3:1 )</small>
+                                <small class="d-block text-muted mb-1">{{translate('Used when the app is in light mode')}}</small>
                                 <div class="custom-file cmn_focus rounded">
-                                    <input type="file" name="logo" id="customFileEg1" class="custom-file-input"
+                                    <input type="file" name="light_logo" id="customFileEg1" class="custom-file-input"
                                            accept=".jpg, .png, .jpeg, .gif, .bmp, .tif, .tiff|image/*" tabindex="6">
                                     <label class="custom-file-label"
                                            for="customFileEg1">{{translate('choose_File')}}</label>
@@ -138,7 +139,27 @@
                                 <div class="text-center mt-3">
                                     <img style="height: 100px;border: 1px solid; border-radius: 10px;" id="viewer"
                                          onerror="this.src='{{asset('public/assets/admin/img/160x160/img2.jpg')}}'"
-                                         src="{{asset('storage/app/public/restaurant/'.$logo)}}" alt="logo image"/>
+                                         src="{{asset('storage/app/public/restaurant/'.$light_logo)}}" alt="light logo image"/>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4 col-sm-6">
+                            @php($dark_logo=\App\CentralLogics\Helpers::get_business_settings('dark_logo') ?? \App\CentralLogics\Helpers::get_business_settings('logo'))
+                            <div class="form-group">
+                                <label class="text-dark">{{translate('Dark Logo')}}</label><small style="color: red">*
+                                    ( {{translate('ratio')}} 3:1 )</small>
+                                <small class="d-block text-muted mb-1">{{translate('Used when the app is in dark mode')}}</small>
+                                <div class="custom-file cmn_focus rounded">
+                                    <input type="file" name="dark_logo" id="customFileEgDark" class="custom-file-input"
+                                           accept=".jpg, .png, .jpeg, .gif, .bmp, .tif, .tiff|image/*" tabindex="6">
+                                    <label class="custom-file-label"
+                                           for="customFileEgDark">{{translate('choose_File')}}</label>
+                                </div>
+
+                                <div class="text-center mt-3">
+                                    <img style="height: 100px;border: 1px solid; border-radius: 10px;" id="viewer_dark"
+                                         onerror="this.src='{{asset('public/assets/admin/img/160x160/img2.jpg')}}'"
+                                         src="{{asset('storage/app/public/restaurant/'.$dark_logo)}}" alt="dark logo image"/>
                                 </div>
                             </div>
                         </div>
@@ -1289,6 +1310,10 @@
 
         $("#customFileEg1").change(function() {
             readURL(this, 'viewer');
+        });
+
+        $("#customFileEgDark").change(function() {
+            readURL(this, 'viewer_dark');
         });
 
         $("#customFileEg2").change(function() {
