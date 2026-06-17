@@ -164,10 +164,7 @@ class BingoBitesOrderMailHelper
     private static function buildStoreBlock(Order $order): array
     {
         $branch = $order->branch;
-        $appUrl = config('app.url', '');
-        $website = $appUrl && !str_contains($appUrl, 'localhost') && !str_contains($appUrl, '127.0.0.1')
-            ? preg_replace('#^https?://#', '', rtrim($appUrl, '/'))
-            : 'www.bingobites.com.au';
+        $website = 'order.bingobites.com.au';
 
         return [
             'name' => $branch?->name ?? Helpers::get_business_settings('restaurant_name') ?? 'Bingo Bites',
