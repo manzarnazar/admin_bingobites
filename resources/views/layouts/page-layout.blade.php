@@ -30,8 +30,7 @@
         $refundPage = isset($pageNames['refund_page']) ? json_decode($pageNames['refund_page'], true) : null;
         $cancellationPage = isset($pageNames['cancellation_page']) ? json_decode($pageNames['cancellation_page'], true) : null;
 
-        $logoName = \App\CentralLogics\Helpers::get_business_settings('logo');
-        $logo = \App\CentralLogics\Helpers::onErrorImage($logoName, asset('storage/app/public/restaurant') . '/' . $logoName, asset('public/assets/admin/img/160x160/img2.jpg'), 'restaurant/');
+        $logo = \App\CentralLogics\Helpers::get_restaurant_logo_url();
     ?>
     <div class="container">
         <div class="inline-page-menu mt-4 d-flex justify-content-between gap-3 flex-wrap">

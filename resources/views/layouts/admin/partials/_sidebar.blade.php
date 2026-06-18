@@ -5,15 +5,15 @@
             <div class="navbar-vertical-footer-offset">
                 <div class="navbar-brand-wrapper justify-content-between">
                     <!-- Logo -->
-                    @php($restaurant_logo=\App\Model\BusinessSetting::where(['key'=>'logo'])->first()->value)
+                    @php($restaurant_logo=\App\CentralLogics\Helpers::get_restaurant_logo_url())
                     <a class="navbar-brand" href="{{route('admin.dashboard')}}" aria-label="Front">
                         <img class="navbar-brand-logo" style="object-fit: contain;"
                              onerror="this.src='{{asset('public/assets/admin/img/160x160/img2.jpg')}}'"
-                             src="{{asset('storage/app/public/restaurant/'.$restaurant_logo)}}"
+                             src="{{$restaurant_logo}}"
                              alt="Logo">
                         <img class="navbar-brand-logo-mini" style="object-fit: contain;"
                              onerror="this.src='{{asset('public/assets/admin/img/160x160/img2.jpg')}}'"
-                             src="{{asset('storage/app/public/restaurant/'.$restaurant_logo)}}" alt="Logo">
+                             src="{{$restaurant_logo}}" alt="Logo">
                     </a>
                     <!-- End Logo -->
 

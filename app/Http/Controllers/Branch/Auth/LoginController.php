@@ -49,8 +49,7 @@ class LoginController extends Controller
      */
     public function login(): Renderable
     {
-        $logoName = Helpers::get_business_settings('logo');
-        $logo = Helpers::onErrorImage($logoName, asset('storage/app/public/restaurant') . '/' . $logoName, asset('public/assets/admin/img/logo.png'), 'restaurant/');
+        $logo = Helpers::get_restaurant_logo_url();
         return view('branch-views.auth.login', compact('logo'));
     }
 

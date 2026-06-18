@@ -1445,6 +1445,33 @@ class Helpers
         return $error_src;
     }
 
+    public static function get_restaurant_logo_filename(bool $preferDark = false): ?string
+    {
+        $light = self::get_business_settings('light_logo') ?? self::get_business_settings('logo');
+        $dark = self::get_business_settings('dark_logo');
+        $candidates = $preferDark ? [$dark, $light] : [$light, $dark];
+
+        foreach ($candidates as $filename) {
+            if (isset($filename) && strlen($filename) > 1 && Storage::disk('public')->exists('restaurant/' . $filename)) {
+                return $filename;
+            }
+        }
+
+        return $light ?? $dark;
+    }
+
+    public static function get_restaurant_logo_url(bool $preferDark = false): string
+    {
+        $filename = self::get_restaurant_logo_filename($preferDark);
+
+        return self::onErrorImage(
+            $filename,
+            asset('storage/app/public/restaurant') . '/' . $filename,
+            asset('public/assets/admin/img/160x160/img2.jpg'),
+            'restaurant/'
+        );
+    }
+
 }
 
 function translate($key)
