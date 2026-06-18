@@ -125,7 +125,7 @@ class ConfigController extends Controller
             'restaurant_schedule_time' => $schedules,
             'restaurant_logo' => Helpers::get_business_settings('light_logo') ?? Helpers::get_business_settings('logo'),
             'restaurant_light_logo' => Helpers::get_business_settings('light_logo') ?? Helpers::get_business_settings('logo'),
-            'restaurant_dark_logo' => Helpers::get_business_settings('dark_logo') ?? Helpers::get_business_settings('logo'),
+            'restaurant_dark_logo' => Helpers::get_business_settings('dark_logo'),
             'restaurant_address' => Helpers::get_business_settings('address'),
             'restaurant_email' => Helpers::get_business_settings('email_address'),
             'restaurant_location_coverage' => $this->branch->where(['id' => 1])->first(['longitude', 'latitude', 'coverage']),
