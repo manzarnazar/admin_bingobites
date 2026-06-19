@@ -264,7 +264,7 @@ class CustomerController extends Controller
         }
 
         $user->phone = $request->phone;
-        $user->image = $request->has('image') ? Helpers::update('profile/', auth('api')->user()->imagee, 'png', $request->file('image')) : auth('api')->user()->image;
+        $user->image = $request->has('image') ? Helpers::update('profile/', auth('api')->user()->image, 'png', $request->file('image')) : auth('api')->user()->image;
         $user->password = $password;
         $user->update();
 

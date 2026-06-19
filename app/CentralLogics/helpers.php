@@ -861,7 +861,7 @@ class Helpers
 
     public static function update(string $dir, $old_image, string $format, $image = null)
     {
-        if (Storage::disk('public')->exists($dir . $old_image)) {
+        if ($old_image && Storage::disk('public')->exists($dir . $old_image)) {
             Storage::disk('public')->delete($dir . $old_image);
         }
         $imageName = Helpers::upload($dir, $format, $image);
