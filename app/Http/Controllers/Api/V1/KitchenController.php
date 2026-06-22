@@ -328,6 +328,53 @@ class KitchenController extends Controller
      * @param Request $request
      * @return JsonResponse
      */
+    public function completeOrder(Request $request): JsonResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'order_id' => 'required',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => Helpers::error_processor($validator)], 403);
+        }
+
+        $order = $this->order->with(['customer', 'delivery_man', 'guest', 'transaction'])->find($request->order_id);
+        if (!$order) {
+            return response()->json([
+                'errors' => [
+                    ['code' => 'order', 'message' => translate('no order found')]
+                ]
+            ], 404);
+        }
+
+        $chefBranch = $this->chefBranch->where('user_id', auth()->user()->id)->first();
+        if (!$chefBranch || (int) $order->branch_id !== (int) $chefBranch->branch_id) {
+            return response()->json([
+                'errors' => [
+                    ['code' => 'order', 'message' => translate('Order not found')]
+                ]
+            ], 403);
+        }
+
+        $result = $this->orderStatusService->completeOrderFromKitchen($order);
+        if (!$result['success']) {
+            return response()->json([
+                'errors' => [
+                    ['code' => $result['code'] ?? 'order', 'message' => $result['message'] ?? translate('Status did not changed')]
+                ]
+            ], 403);
+        }
+
+        return response()->json([
+            'order' => $result['order'],
+            'message' => translate('Order status updated!'),
+        ], 200);
+    }
+
+    /**
+     * @param Request $request
+     * @return JsonResponse
+     */
     public function updateFcmToken(Request $request): JsonResponse
     {
         $validator = Validator::make($request->all(), [

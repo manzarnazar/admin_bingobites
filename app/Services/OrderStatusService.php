@@ -2,9 +2,15 @@
 
 namespace App\Services;
 
+use App\CentralLogics\CustomerLogic;
 use App\CentralLogics\Helpers;
+use App\CentralLogics\OrderLogic;
 use App\Model\Order;
+use App\Models\OrderPartialPayment;
+use App\Models\ReferralCustomer;
+use App\User;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 use function App\CentralLogics\translate;
 
 class OrderStatusService
@@ -72,6 +78,144 @@ class OrderStatusService
     public function notifyOrderCustomerForStatus(Order $order, string $status): void
     {
         $this->notifyOrderCustomer($order, $status);
+    }
+
+    /**
+     * @return array{success: bool, order?: Order, code?: string, message?: string}
+     */
+    public function completeOrderFromKitchen(Order $order): array
+    {
+        if ($order->order_status !== 'done') {
+            return [
+                'success' => false,
+                'code' => 'order_status',
+                'message' => translate('Invalid status transition'),
+            ];
+        }
+
+        if (in_array($order->order_type, ['delivery', 'home_delivery'], true)) {
+            return [
+                'success' => false,
+                'code' => 'order_type',
+                'message' => translate('Delivery orders must be completed by the delivery man'),
+            ];
+        }
+
+        $isTakeAway = in_array($order->order_type, ['take_away', 'pos'], true);
+        $isDineIn = $order->order_type === 'dine_in';
+
+        if (!$isTakeAway && !$isDineIn) {
+            return [
+                'success' => false,
+                'code' => 'order_type',
+                'message' => translate('This order type cannot be completed from kitchen'),
+            ];
+        }
+
+        if ($isTakeAway
+            && $order->transaction_reference == null
+            && !in_array($order->payment_method, ['cash_on_delivery', 'wallet_payment', 'offline_payment'], true)
+        ) {
+            return [
+                'success' => false,
+                'code' => 'payment',
+                'message' => translate('add_your_payment_reference_first'),
+            ];
+        }
+
+        if ($isDineIn && $order->payment_status !== 'paid') {
+            return [
+                'success' => false,
+                'code' => 'payment',
+                'message' => translate('Please update payment status first!'),
+            ];
+        }
+
+        $targetStatus = $isTakeAway ? 'delivered' : 'completed';
+
+        $order->loadMissing(['customer', 'delivery_man', 'guest', 'transaction']);
+
+        try {
+            DB::transaction(function () use ($order, $isTakeAway, $targetStatus) {
+                if ($isTakeAway) {
+                    $this->applyDeliveredSideEffects($order);
+                }
+
+                $order->order_status = $targetStatus;
+                if ($isTakeAway) {
+                    $order->payment_status = 'paid';
+                }
+                $order->save();
+            });
+        } catch (\Throwable $e) {
+            return [
+                'success' => false,
+                'code' => 'order',
+                'message' => translate('Status did not changed'),
+            ];
+        }
+
+        $order->refresh();
+        $this->notifyOrderCustomer($order, $targetStatus);
+
+        return [
+            'success' => true,
+            'order' => $order,
+        ];
+    }
+
+    private function applyDeliveredSideEffects(Order $order): void
+    {
+        if ($order->is_guest != 0) {
+            return;
+        }
+
+        if ($order->user_id) {
+            CustomerLogic::create_loyalty_point_transaction(
+                $order->user_id,
+                $order->id,
+                $order->order_amount,
+                'order_place'
+            );
+        }
+
+        if ($order->transaction == null) {
+            OrderLogic::create_transaction($order, 'admin');
+        }
+
+        $user = User::query()->find($order->user_id);
+        if (!$user) {
+            return;
+        }
+
+        $referralData = $user->referral_customer_details;
+        if ($referralData && $referralData->is_used_by_refer == 0) {
+            $referralEarningAmount = $referralData->ref_by_earning_amount ?? 0;
+            $referredByUser = User::query()->find($user->refer_by);
+
+            if ($referralEarningAmount > 0 && $referredByUser) {
+                CustomerLogic::referral_earning_wallet_transaction(
+                    $order->user_id,
+                    'referral_order_place',
+                    $referredByUser->id,
+                    $referralEarningAmount
+                );
+            }
+
+            ReferralCustomer::where('user_id', $order->user_id)->update(['is_used_by_refer' => 1]);
+        }
+
+        if ($order->payment_method === 'cash_on_delivery') {
+            $partialData = OrderPartialPayment::where(['order_id' => $order->id])->first();
+            if ($partialData) {
+                $partial = new OrderPartialPayment;
+                $partial->order_id = $order->id;
+                $partial->paid_with = 'cash_on_delivery';
+                $partial->paid_amount = $partialData->due_amount;
+                $partial->due_amount = 0;
+                $partial->save();
+            }
+        }
     }
 
     private function notifyDeliveryman(Order $order): void
