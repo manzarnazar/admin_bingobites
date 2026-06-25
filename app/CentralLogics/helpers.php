@@ -418,18 +418,37 @@ class Helpers
                 "data" => [
                     "title" => (string)$data['title'],
                     "body" => (string)$data['description'],
+                    "description" => (string)$data['description'],
                     "image" => (string)$data['image'],
                     "order_id" => (string)$data['order_id'],
                     "type" => (string)$data['type'],
                     "is_deliveryman_assigned" => $isDeliverymanAssigned ? "1" : "0",
                 ],
-                "notification" => [
-                    'title' => (string)$data['title'],
-                    'body' => (string)$data['description'],
-                ],
             ]
         ];
+
+        if (!self::isWebPushToken($fcm_token)) {
+            $postData['message']['notification'] = [
+                'title' => (string)$data['title'],
+                'body' => (string)$data['description'],
+            ];
+        }
+
         return self::sendNotificationToHttp($postData);
+    }
+
+    private static function isWebPushToken(?string $fcm_token): bool
+    {
+        if (!$fcm_token || $fcm_token === '@') {
+            return false;
+        }
+
+        return \App\User::where('cm_firebase_token', $fcm_token)
+                ->where('fcm_platform', 'web')
+                ->exists()
+            || \App\Models\GuestUser::where('fcm_token', $fcm_token)
+                ->where('fcm_platform', 'web')
+                ->exists();
     }
 
     public static function send_push_notif_to_topic($data, $topic, $type, $web_push_link = null, $isNotificationPayloadRemove = false)

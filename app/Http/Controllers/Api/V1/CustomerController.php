@@ -287,27 +287,40 @@ class CustomerController extends Controller
 
         $user = auth('api')->user();
         $guest = $request['guest_id'];
+        $fcmPlatform = $request->input('push_platform');
 
         if (isset($user) && isset($guest)){
-            $this->user->where('id', auth('api')->user()->id )->update([
+            $userUpdate = [
                 'cm_firebase_token' => $request['cm_firebase_token'],
-                'language_code' => $request->header('X-localization') ?? 'en'
-            ]);
+                'language_code' => $request->header('X-localization') ?? 'en',
+            ];
+            if ($fcmPlatform) {
+                $userUpdate['fcm_platform'] = $fcmPlatform;
+            }
+            $this->user->where('id', auth('api')->user()->id)->update($userUpdate);
 
             $this->guestUser->where('id', $request['guest_id'])->update([
                 'fcm_token' => '@',
             ]);
 
         }elseif(isset($user)){
-            $this->user->where('id', auth('api')->user()->id)->update([
+            $userUpdate = [
                 'cm_firebase_token' => $request['cm_firebase_token'],
-                'language_code' => $request->header('X-localization') ?? 'en'
-            ]);
+                'language_code' => $request->header('X-localization') ?? 'en',
+            ];
+            if ($fcmPlatform) {
+                $userUpdate['fcm_platform'] = $fcmPlatform;
+            }
+            $this->user->where('id', auth('api')->user()->id)->update($userUpdate);
 
         }elseif(isset($guest)){
-            $this->guestUser->where('id',  $request['guest_id'])->update([
+            $guestUpdate = [
                 'fcm_token' => $request['cm_firebase_token'],
-            ]);
+            ];
+            if ($fcmPlatform) {
+                $guestUpdate['fcm_platform'] = $fcmPlatform;
+            }
+            $this->guestUser->where('id', $request['guest_id'])->update($guestUpdate);
         }
 
         return response()->json(['message' => translate('update_success')], 200);
