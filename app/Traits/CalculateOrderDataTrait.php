@@ -101,7 +101,7 @@ trait CalculateOrderDataTrait
                     $variationData = Helpers::get_varient($branchProductVariations, $cartItem['variations']);
                     $price = $branchProduct['price'] + $variationData['price'];
                     $variations = $variationData['variations'];
-                    $pricedVariationLabels = Helpers::extract_variation_option_labels($variationData['variations'] ?? []);
+                    $pricedVariationLabels = Helpers::extract_priced_variation_option_labels($variationData['variations'] ?? []);
                 } else {
                     $price = $branchProduct['price'];
                 }
@@ -118,7 +118,7 @@ trait CalculateOrderDataTrait
                     $variationData = Helpers::get_varient($productVariations, $cartItem['variations']);
                     $price = $product['price'] + $variationData['price'];
                     $variations = $variationData['variations'];
-                    $pricedVariationLabels = Helpers::extract_variation_option_labels($variationData['variations'] ?? []);
+                    $pricedVariationLabels = Helpers::extract_priced_variation_option_labels($variationData['variations'] ?? []);
                 } else {
                     $price = $product['price'];
                 }

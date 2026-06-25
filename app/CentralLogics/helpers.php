@@ -1054,6 +1054,35 @@ class Helpers
         return array_values(array_unique($labels));
     }
 
+    /**
+     * Labels for variation options that contributed a non-zero price in get_varient().
+     */
+    public static function extract_priced_variation_option_labels(array $variations): array
+    {
+        $labels = [];
+
+        foreach ($variations as $variation) {
+            if (!isset($variation['values']) || !is_array($variation['values'])) {
+                continue;
+            }
+
+            foreach ($variation['values'] as $value) {
+                if (
+                    is_array($value)
+                    && !empty($value['label'])
+                    && (float) ($value['optionPrice'] ?? 0) > 0
+                ) {
+                    $label = mb_strtolower(trim((string) $value['label']));
+                    if ($label !== '') {
+                        $labels[] = $label;
+                    }
+                }
+            }
+        }
+
+        return array_values(array_unique($labels));
+    }
+
     public static function normalize_order_addons(Product $product, array $selectedVariations = [], array $selectedAddonIds = [], array $selectedAddonQtys = [], array $excludeAddonLabels = []): array
     {
         $allowedAddons = $product->resolvedAddons()->keyBy('id');

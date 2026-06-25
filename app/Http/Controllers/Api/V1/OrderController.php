@@ -100,6 +100,68 @@ class OrderController extends Controller
     }
 
     /**
+     * Preview order totals using the same calculation as payment / place order.
+     */
+    public function previewAmount(Request $request): JsonResponse
+    {
+        $authenticatedUser = $this->getAuthenticatedUser($request);
+
+        $validator = Validator::make($request->all(), [
+            'cart' => 'required|array|min:1',
+            'branch_id' => 'required',
+            'order_type' => 'required|in:take_away,delivery,dine_in',
+            'distance' => 'required|numeric',
+            'coupon_code' => 'nullable|string',
+            'guest_id' => $authenticatedUser ? 'nullable' : 'required',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => Helpers::error_processor($validator)], 403);
+        }
+
+        $userId = $authenticatedUser?->id ?? $request->input('guest_id');
+        $isGuest = $authenticatedUser ? 0 : 1;
+
+        $deliveryChargeInfo = [
+            'branch_id' => $request->input('branch_id'),
+            'distance' => $request->input('distance'),
+            'selected_delivery_area' => $request->input('selected_delivery_area'),
+            'order_type' => $request->input('order_type'),
+        ];
+
+        try {
+            $amountData = $this->calculateOrderAmount(
+                cart: $request->input('cart'),
+                userId: $userId,
+                isGuest: $isGuest,
+                deliveryChargeInfo: $deliveryChargeInfo,
+                couponCode: $request->input('coupon_code'),
+            );
+        } catch (ValidationException $e) {
+            return response()->json(['errors' => $e->errors()], 403);
+        } catch (\Exception $e) {
+            return response()->json(['errors' => [['message' => $e->getMessage()]]], 403);
+        }
+
+        if ($amountData instanceof JsonResponse) {
+            return $amountData;
+        }
+
+        $orderAmount = $amountData['order_amount'] + $amountData['delivery_charge_amount'];
+
+        return response()->json([
+            'order_amount' => Helpers::set_price($orderAmount),
+            'total_product_price' => Helpers::set_price($amountData['total_product_price']),
+            'total_addon_price' => Helpers::set_price($amountData['total_addon_price']),
+            'product_discount' => Helpers::set_price($amountData['total_discount_on_product']),
+            'tax_amount' => Helpers::set_price($amountData['total_product_and_addon_tax_amount']),
+            'referral_discount_amount' => Helpers::set_price($amountData['referral_discount_amount']),
+            'coupon_discount_amount' => Helpers::set_price($amountData['coupon_discount_amount']),
+            'delivery_charge_amount' => Helpers::set_price($amountData['delivery_charge_amount']),
+        ], 200);
+    }
+
+    /**
      * @param Request $request
      * @return JsonResponse
      */
