@@ -100,12 +100,19 @@ class DigitalPaymentController extends Controller
 
     }
 
-    private function buildPaymentResponse(Request $request, Payer $payer, PaymentInfo $payment_info, Receiver $receiver_info)
+    private function buildPaymentResponse(Request $request, Payer $payer, PaymentInfo $payment_info, Receiver $receiver_info, array $amountBreakdown = [])
     {
         $paymentRequest = Payment::create_payment_request($payer, $payment_info, $receiver_info);
 
         if ($request->payment_method === 'stripe' && $request->payment_platform === 'app') {
-            return app(StripePaymentController::class)->createMobilePaymentIntent($paymentRequest);
+            $stripeResponse = app(StripePaymentController::class)->createMobilePaymentIntent($paymentRequest);
+            if ($amountBreakdown !== [] && $stripeResponse instanceof \Illuminate\Http\JsonResponse) {
+                $payload = $stripeResponse->getData(true);
+                if (is_array($payload)) {
+                    return response()->json(array_merge($payload, $amountBreakdown), $stripeResponse->status());
+                }
+            }
+            return $stripeResponse;
         }
 
         $redirect_link = Payment::get_redirect_link($paymentRequest);
@@ -113,7 +120,7 @@ class DigitalPaymentController extends Controller
             return response()->json(['errors' => [['message' => translate('Invalid payment method')]]], 400);
         }
 
-        return response()->json(['redirect_link' => $redirect_link], 200);
+        return response()->json(array_merge(['redirect_link' => $redirect_link], $amountBreakdown), 200);
     }
 
     public function payment(Request $request)
@@ -231,7 +238,14 @@ class DigitalPaymentController extends Controller
 
         $receiver_info = new Receiver('receiver_name','example.png');
 
-        return $this->buildPaymentResponse($request, $payer, $payment_info, $receiver_info);
+        $amountBreakdown = [
+            'order_amount' => Helpers::set_price($order_amount),
+            'referral_discount_amount' => Helpers::set_price($amountData['referral_discount_amount']),
+            'coupon_discount_amount' => Helpers::set_price($amountData['coupon_discount_amount']),
+            'delivery_charge_amount' => Helpers::set_price($amountData['delivery_charge_amount']),
+        ];
+
+        return $this->buildPaymentResponse($request, $payer, $payment_info, $receiver_info, $amountBreakdown);
     }
 
 }

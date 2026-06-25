@@ -123,10 +123,10 @@ class Helpers
                 $item['choice_options'] = json_decode($item['choice_options']);
 
                 $productModel = $item instanceof Product ? $item : null;
-                $legacyAddonIds = $productModel
-                    ? $productModel->legacyAddonIds()
+                $resolvedAddonIds = $productModel
+                    ? $productModel->resolvedAddonIds()
                     : (json_decode($item['add_ons'] ?? '[]', true) ?: []);
-                $item['add_ons'] = AddOn::whereIn('id', $legacyAddonIds)->get();
+                $item['add_ons'] = AddOn::whereIn('id', $resolvedAddonIds)->get();
 
                 $item['variations'] = json_decode($item['variations'], true);
                 $item = self::mergeProductModifierTemplates($item);
@@ -146,9 +146,12 @@ class Helpers
             }
             $data = $storage;
         } else {
+            $productModel = $data instanceof Product ? $data : null;
             $data_addons = $data['add_ons'];
             $addon_ids = [];
-            if(gettype($data_addons) != 'array') {
+            if ($productModel) {
+                $addon_ids = $productModel->resolvedAddonIds();
+            } elseif(gettype($data_addons) != 'array') {
                 $addon_ids = json_decode($data_addons);
 
             } elseif(gettype($data_addons) == 'array' && isset($data_addons[0]['id'])) {
@@ -1060,23 +1063,21 @@ class Helpers
             }
         }
 
-        if (empty($normalizedIds) && !empty($selectedVariations)) {
+        if (!empty($selectedVariations)) {
             $labelsWithQty = self::extract_selected_variation_labels_with_qty($selectedVariations);
-            $qtyByAddonId = [];
             foreach ($labelsWithQty as $labelData) {
                 $normalizedLabel = mb_strtolower(trim((string) ($labelData['label'] ?? '')));
                 if ($normalizedLabel === '' || !isset($nameToAddonId[$normalizedLabel])) {
                     continue;
                 }
 
-                $addonId = $nameToAddonId[$normalizedLabel];
-                $qty = max(1, (int) ($labelData['qty'] ?? 1));
-                $qtyByAddonId[$addonId] = ($qtyByAddonId[$addonId] ?? 0) + $qty;
-            }
+                $addonId = (int) $nameToAddonId[$normalizedLabel];
+                if (in_array($addonId, $normalizedIds, true)) {
+                    continue;
+                }
 
-            foreach ($qtyByAddonId as $addonId => $qty) {
-                $normalizedIds[] = (int) $addonId;
-                $normalizedQtys[] = (int) $qty;
+                $normalizedIds[] = $addonId;
+                $normalizedQtys[] = max(1, (int) ($labelData['qty'] ?? 1));
             }
         }
 

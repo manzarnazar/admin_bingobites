@@ -44,7 +44,27 @@ trait CalculateOrderDataTrait
         $appliedCouponCode = null;
 
         foreach ($cart as $cartItem) {
-            $product = Product::find($cartItem['product_id']);
+            $product = Product::with([
+                'modifierTemplates' => function ($query) {
+                    $query->where('modifier_templates.is_active', 1)
+                        ->wherePivot('is_active', 1)
+                        ->orderBy('product_modifier_template.sort_order');
+                },
+                'modifierTemplates.items' => function ($query) {
+                    $query->where('is_active', 1)->orderBy('sort_order');
+                },
+                'modifierTemplates.items.addon',
+            ])->find($cartItem['product_id']);
+
+            if (!$product) {
+                return response()->json([
+                    'errors' => [[
+                        'code' => 'product',
+                        'message' => translate('Product not found')
+                    ]]
+                ], 403);
+            }
+
             $branchProduct = ProductByBranch::
                 where([
                     'product_id' => $cartItem['product_id'],
@@ -69,7 +89,14 @@ trait CalculateOrderDataTrait
             $product->halal_status = $branchProduct?->halal_status ?? 0;
 
             if ($branchProduct) {
-                $branchProductVariations = $branchProduct->variations;
+                $branchProductVariations = $branchProduct->variations ?? [];
+                if (!is_array($branchProductVariations)) {
+                    $branchProductVariations = json_decode($branchProductVariations ?? '[]', true) ?: [];
+                }
+                $branchProductVariations = array_merge(
+                    $branchProductVariations,
+                    $product->modifierTemplatesAsVariations()
+                );
                 $variations = [];
 
                 if (count($branchProductVariations)) {
@@ -84,7 +111,11 @@ trait CalculateOrderDataTrait
                     'discount' => $branchProduct['discount'],
                 ];
             } else {
-                $productVariations = json_decode($product->variations, true);
+                $productVariations = json_decode($product->variations, true) ?: [];
+                $productVariations = array_merge(
+                    is_array($productVariations) ? $productVariations : [],
+                    $product->modifierTemplatesAsVariations()
+                );
                 $variations = [];
 
                 if (count($productVariations)) {
