@@ -39,7 +39,15 @@ class AutoCompleteCookingOrders extends Command
                     }
 
                     if ($readyAt->lte(now())) {
-                        if ($this->orderStatusService->markOrderDone($order, notifyKitchen: true)) {
+                        $isTakeAway = in_array($order->order_type, ['take_away', 'pos'], true);
+
+                        if ($isTakeAway) {
+                            $result = $this->orderStatusService->finalizeTakeawayFromCooking($order);
+                            if ($result['success']) {
+                                $completed++;
+                                Log::info('AutoCompleteCookingOrders: takeaway delivered', ['order_id' => $order->id]);
+                            }
+                        } elseif ($this->orderStatusService->markOrderDone($order, notifyKitchen: true)) {
                             $completed++;
                             Log::info('AutoCompleteCookingOrders: completed', ['order_id' => $order->id]);
                         }

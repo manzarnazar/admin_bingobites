@@ -6,6 +6,7 @@ use App\CentralLogics\CustomerLogic;
 use App\CentralLogics\Helpers;
 use App\CentralLogics\OrderLogic;
 use App\Model\Order;
+use App\Model\PointTransitions;
 use App\Models\OrderPartialPayment;
 use App\Models\ReferralCustomer;
 use App\User;
@@ -78,6 +79,82 @@ class OrderStatusService
     public function notifyOrderCustomerForStatus(Order $order, string $status): void
     {
         $this->notifyOrderCustomer($order, $status);
+    }
+
+    /**
+     * @return array{success: bool, order?: Order, code?: string, message?: string}
+     */
+    public function finalizeTakeawayFromCooking(Order $order): array
+    {
+        if (!in_array($order->order_type, ['take_away', 'pos'], true)) {
+            return [
+                'success' => false,
+                'code' => 'order_type',
+                'message' => translate('This order type cannot be completed from kitchen'),
+            ];
+        }
+
+        if ($order->order_status === 'delivered') {
+            return [
+                'success' => true,
+                'order' => $order,
+            ];
+        }
+
+        if ($order->order_status !== 'cooking') {
+            return [
+                'success' => false,
+                'code' => 'order_status',
+                'message' => translate('Invalid status transition'),
+            ];
+        }
+
+        if ($order->transaction_reference == null
+            && !in_array($order->payment_method, ['cash_on_delivery', 'wallet_payment', 'offline_payment'], true)
+        ) {
+            return [
+                'success' => false,
+                'code' => 'payment',
+                'message' => translate('add_your_payment_reference_first'),
+            ];
+        }
+
+        $order->loadMissing(['customer', 'delivery_man', 'guest', 'transaction']);
+
+        try {
+            DB::transaction(function () use ($order) {
+                $updated = Order::query()
+                    ->where('id', $order->id)
+                    ->where('order_status', 'cooking')
+                    ->update([
+                        'order_status' => 'delivered',
+                        'payment_status' => 'paid',
+                    ]);
+
+                if (!$updated) {
+                    throw new \RuntimeException('Status did not change');
+                }
+
+                $order->order_status = 'delivered';
+                $order->payment_status = 'paid';
+
+                $this->applyDeliveredSideEffects($order);
+            });
+        } catch (\Throwable $e) {
+            return [
+                'success' => false,
+                'code' => 'order',
+                'message' => translate('Status did not changed'),
+            ];
+        }
+
+        $order->refresh();
+        $this->notifyOrderCustomer($order, 'delivered');
+
+        return [
+            'success' => true,
+            'order' => $order,
+        ];
     }
 
     /**
@@ -171,12 +248,19 @@ class OrderStatusService
         }
 
         if ($order->user_id) {
-            CustomerLogic::create_loyalty_point_transaction(
-                $order->user_id,
-                $order->id,
-                $order->order_amount,
-                'order_place'
-            );
+            $loyaltyAlreadyAwarded = PointTransitions::query()
+                ->where('reference', $order->id)
+                ->where('type', 'order_place')
+                ->exists();
+
+            if (!$loyaltyAlreadyAwarded) {
+                CustomerLogic::create_loyalty_point_transaction(
+                    $order->user_id,
+                    $order->id,
+                    $order->order_amount,
+                    'order_place'
+                );
+            }
         }
 
         if ($order->transaction == null) {

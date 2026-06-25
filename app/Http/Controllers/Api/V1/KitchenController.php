@@ -306,6 +306,19 @@ class KitchenController extends Controller
         }
 
         if ($newStatus === 'done') {
+            if (in_array($order->order_type, ['take_away', 'pos'], true)) {
+                $result = $this->orderStatusService->finalizeTakeawayFromCooking($order);
+                if (!$result['success']) {
+                    return response()->json([
+                        'errors' => [
+                            ['code' => $result['code'] ?? 'order', 'message' => $result['message'] ?? translate('Status did not changed')]
+                        ]
+                    ], 403);
+                }
+
+                return response()->json(['orders' => $result['order'], 'message' => translate('Order status updated!')], 200);
+            }
+
             if ($this->orderStatusService->markOrderDone($order)) {
                 return response()->json(['orders' => $order->fresh(), 'message' => translate('Order status updated!')], 200);
             }
