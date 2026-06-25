@@ -88,21 +88,20 @@ trait CalculateOrderDataTrait
             $discountData = [];
             $product->halal_status = $branchProduct?->halal_status ?? 0;
 
+            $pricedVariationLabels = [];
+
             if ($branchProduct) {
                 $branchProductVariations = $branchProduct->variations ?? [];
                 if (!is_array($branchProductVariations)) {
                     $branchProductVariations = json_decode($branchProductVariations ?? '[]', true) ?: [];
                 }
-                $branchProductVariations = array_merge(
-                    $branchProductVariations,
-                    $product->modifierTemplatesAsVariations()
-                );
                 $variations = [];
 
                 if (count($branchProductVariations)) {
                     $variationData = Helpers::get_varient($branchProductVariations, $cartItem['variations']);
                     $price = $branchProduct['price'] + $variationData['price'];
                     $variations = $variationData['variations'];
+                    $pricedVariationLabels = Helpers::extract_variation_option_labels($variationData['variations'] ?? []);
                 } else {
                     $price = $branchProduct['price'];
                 }
@@ -112,16 +111,14 @@ trait CalculateOrderDataTrait
                 ];
             } else {
                 $productVariations = json_decode($product->variations, true) ?: [];
-                $productVariations = array_merge(
-                    is_array($productVariations) ? $productVariations : [],
-                    $product->modifierTemplatesAsVariations()
-                );
+                $productVariations = is_array($productVariations) ? $productVariations : [];
                 $variations = [];
 
                 if (count($productVariations)) {
                     $variationData = Helpers::get_varient($productVariations, $cartItem['variations']);
                     $price = $product['price'] + $variationData['price'];
                     $variations = $variationData['variations'];
+                    $pricedVariationLabels = Helpers::extract_variation_option_labels($variationData['variations'] ?? []);
                 } else {
                     $price = $product['price'];
                 }
@@ -138,6 +135,7 @@ trait CalculateOrderDataTrait
                 selectedVariations: $cartItem['variations'] ?? [],
                 selectedAddonIds: $cartItem['add_on_ids'] ?? [],
                 selectedAddonQtys: $cartItem['add_on_qtys'] ?? [],
+                excludeAddonLabels: $pricedVariationLabels,
             );
             $addonTaxForThisItem = (float) $normalizedAddons['add_on_tax_amount'];
             $addonPrice = (float) $normalizedAddons['total_add_on_price'];

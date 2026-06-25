@@ -1032,12 +1032,42 @@ class Helpers
     /**
      * Normalize addon payload from explicit addon IDs or selected variation labels.
      */
-    public static function normalize_order_addons(Product $product, array $selectedVariations = [], array $selectedAddonIds = [], array $selectedAddonQtys = []): array
+    public static function extract_variation_option_labels(array $variations): array
+    {
+        $labels = [];
+
+        foreach ($variations as $variation) {
+            if (!isset($variation['values']) || !is_array($variation['values'])) {
+                continue;
+            }
+
+            foreach ($variation['values'] as $value) {
+                if (is_array($value) && !empty($value['label'])) {
+                    $label = mb_strtolower(trim((string) $value['label']));
+                    if ($label !== '') {
+                        $labels[] = $label;
+                    }
+                }
+            }
+        }
+
+        return array_values(array_unique($labels));
+    }
+
+    public static function normalize_order_addons(Product $product, array $selectedVariations = [], array $selectedAddonIds = [], array $selectedAddonQtys = [], array $excludeAddonLabels = []): array
     {
         $allowedAddons = $product->resolvedAddons()->keyBy('id');
         $nameToAddonId = [];
         foreach ($allowedAddons as $addon) {
             $nameToAddonId[mb_strtolower(trim($addon->name))] = (int) $addon->id;
+        }
+
+        $excludeLabelSet = [];
+        foreach ($excludeAddonLabels as $label) {
+            $normalized = mb_strtolower(trim((string) $label));
+            if ($normalized !== '') {
+                $excludeLabelSet[$normalized] = true;
+            }
         }
 
         $normalizedIds = [];
@@ -1047,6 +1077,11 @@ class Helpers
             foreach (array_values($selectedAddonIds) as $index => $addonId) {
                 $addonId = (int) $addonId;
                 if (!$allowedAddons->has($addonId)) {
+                    continue;
+                }
+
+                $addonName = mb_strtolower(trim((string) $allowedAddons->get($addonId)->name));
+                if ($addonName !== '' && isset($excludeLabelSet[$addonName])) {
                     continue;
                 }
 
@@ -1068,6 +1103,10 @@ class Helpers
             foreach ($labelsWithQty as $labelData) {
                 $normalizedLabel = mb_strtolower(trim((string) ($labelData['label'] ?? '')));
                 if ($normalizedLabel === '' || !isset($nameToAddonId[$normalizedLabel])) {
+                    continue;
+                }
+
+                if (isset($excludeLabelSet[$normalizedLabel])) {
                     continue;
                 }
 
