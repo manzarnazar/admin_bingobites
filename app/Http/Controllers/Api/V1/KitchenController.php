@@ -97,7 +97,8 @@ class KitchenController extends Controller
                 ->where(['order_status' => 'cooking', 'branch_id' => $branchId])
                 ->count(),
             'done' => $this->order
-                ->where(['order_status' => 'done', 'branch_id' => $branchId])
+                ->where('branch_id', $branchId)
+                ->whereIn('order_status', ['done', 'delivered'])
                 ->count(),
         ], 200);
     }
@@ -137,7 +138,7 @@ class KitchenController extends Controller
         $orders = $this->paginateKitchenOrders(
             $this->order
                 ->where('branch_id', $branchId)
-                ->whereIn('order_status', ['pending', 'confirmed', 'cooking', 'done'])
+                ->whereIn('order_status', ['pending', 'confirmed', 'cooking', 'done', 'delivered'])
                 ->when($search != null, function ($query) use ($key) {
                     foreach ($key as $value) {
                         $query->Where('id', 'like', "%{$value}%");
@@ -174,6 +175,14 @@ class KitchenController extends Controller
                 $this->order
                     ->where('branch_id', $branchId)
                     ->whereIn('order_status', ['pending', 'confirmed']),
+                $limit,
+                $offset
+            );
+        } elseif ($orderStatus == 'done') {
+            $orders = $this->paginateKitchenOrders(
+                $this->order
+                    ->where('branch_id', $branchId)
+                    ->whereIn('order_status', ['done', 'delivered']),
                 $limit,
                 $offset
             );
