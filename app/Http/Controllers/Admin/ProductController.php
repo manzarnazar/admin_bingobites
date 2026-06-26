@@ -318,7 +318,7 @@ class ProductController extends Controller
         $product->discount_type = $request->discount_type;
 
         $product->attributes = $request->has('attribute_id') ? json_encode($request->attribute_id) : json_encode([]);
-        $product->add_ons = $request->has('addon_ids') ? json_encode($request->addon_ids) : json_encode([]);
+        $product->add_ons = json_encode([]);
         $product->status = $request->status == 'on' ? 1 : 0;
         $product->is_recommended = $request->is_recommended == 'on' ? 1 : 0;
         $product->save();
@@ -595,7 +595,7 @@ class ProductController extends Controller
         $product->discount_type = $request->discount_type;
 
         $product->attributes = $request->has('attribute_id') ? json_encode($request->attribute_id) : json_encode([]);
-        $product->add_ons = $request->has('addon_ids') ? json_encode($request->addon_ids) : json_encode([]);
+        $product->add_ons = json_encode([]);
         $product->status = $request->status == 'on' ? 1 : 0;
         $product->is_recommended = $request->is_recommended == 'on' ? 1 : 0;
         $product->save();

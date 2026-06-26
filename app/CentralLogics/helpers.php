@@ -122,14 +122,9 @@ class Helpers
                 $item['attributes'] = json_decode($item['attributes']);
                 $item['choice_options'] = json_decode($item['choice_options']);
 
-                $productModel = $item instanceof Product ? $item : null;
-                $resolvedAddonIds = $productModel
-                    ? $productModel->resolvedAddonIds()
-                    : (json_decode($item['add_ons'] ?? '[]', true) ?: []);
-                $item['add_ons'] = AddOn::whereIn('id', $resolvedAddonIds)->get();
-
                 $item['variations'] = json_decode($item['variations'], true);
                 $item = self::mergeProductModifierTemplates($item);
+                $item['add_ons'] = [];
 
                 if (count($item['translations'])) {
                     foreach ($item['translations'] as $translation) {
@@ -146,30 +141,10 @@ class Helpers
             }
             $data = $storage;
         } else {
-            $productModel = $data instanceof Product ? $data : null;
-            $data_addons = $data['add_ons'];
-            $addon_ids = [];
-            if ($productModel) {
-                $addon_ids = $productModel->resolvedAddonIds();
-            } elseif(gettype($data_addons) != 'array') {
-                $addon_ids = json_decode($data_addons);
-
-            } elseif(gettype($data_addons) == 'array' && isset($data_addons[0]['id'])) {
-                foreach($data_addons as $addon) {
-                    $addon_ids[] = $addon['id'];
-                }
-
-            } else {
-                $addon_ids = $data_addons;
-            }
-
-            $variations = [];
             $data['category_ids'] = gettype($data['category_ids']) != 'array' ? json_decode($data['category_ids']) : $data['category_ids'];
             $data['attributes'] = gettype($data['attributes']) != 'array' ? json_decode($data['attributes']) : $data['attributes'];
             $data['choice_options'] = gettype($data['choice_options']) != 'array' ? json_decode($data['choice_options']) : $data['choice_options'];
 
-            //variation server relate data formating
-            $data['add_ons'] = AddOn::whereIn('id', $addon_ids)->get()->toArray();
             $data['variations'] = gettype($data['variations']) == 'array' ? $data['variations'] : json_decode($data['variations'], true);
 
 
@@ -185,6 +160,7 @@ class Helpers
             }
 
             $data = self::mergeProductModifierTemplates($data);
+            $data['add_ons'] = [];
         }
 
         return $data;

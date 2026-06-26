@@ -433,42 +433,6 @@
                                         </div>
                                     </div>
                                 </div>
-                                <div class="col-12 addon_wrapper">
-                                    <div class="outline-wrapper">
-                                        <div class="card h-100 bg-animate">
-                                            <div class="card-header">
-                                                <h4 class="mb-0 d-flex gap-2 align-items-center">
-                                                    <i class="tio-puzzle"></i>
-                                                    {{translate('Addons')}}
-                                                </h4>
-
-                                                <button type="button"
-                                                        class="btn bg-white text-ai d-flex gap-1 mb-0 bg-transparent shadow-none border-0 opacity-1 generate_btn_wrapper price_btn_wrapper p-0 addon_setup_auto_fill"
-                                                        id="addon_setup_auto_fill"
-                                                        data-route="{{ route('admin.product.addon-setup-auto-fill') }}"
-                                                        data-lang="en">
-                                                    <div class="btn-svg-wrapper">
-                                                        <img width="18" height="18" class=""
-                                                             src="{{ asset(path: 'public/assets/admin/img/ai//blink-right-small.svg') }}" alt="">
-                                                    </div>
-                                                    <span class="ai-text-animation d-none" role="status">{{ translate('Just_a_second') }}</span>
-                                                    <span class="btn-text">{{ translate('Generate') }}</span>
-                                                </button>
-
-                                            </div>
-                                            <div class="card-body">
-                                                <div class="form-group">
-                                                    <label class="input-label">{{translate('Select_Addons')}}</label>
-                                                    <select name="addon_ids[]" class="form-control cmn_focus" id="choose_addons" multiple="multiple" tabindex="19">
-                                                        @foreach(\App\Model\AddOn::orderBy('name')->get() as $addon)
-                                                            <option value="{{$addon['id']}}">{{$addon['name']}}</option>
-                                                        @endforeach
-                                                    </select>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
                                 <div class="col-12">
                                     <div class="outline-wrapper">
                                         <div class="card h-100">
@@ -881,10 +845,6 @@
 
     <script>
         //Select 2
-        $("#choose_addons").select2({
-            placeholder: "Select Addons",
-            allowClear: true
-        });
         $("#choose_modifier_templates").select2({
             placeholder: "Select Modifier Templates",
             allowClear: true

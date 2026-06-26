@@ -253,6 +253,7 @@ class Product extends Model
                 $value = [
                     'label' => $item->addon->name,
                     'optionPrice' => (float) $item->addon->price,
+                    'addon_id' => (int) $item->add_on_id,
                 ];
                 if ($optionMaxQty !== null && (int) $optionMaxQty > 0) {
                     $value['optionMaxQty'] = (int) $optionMaxQty;
