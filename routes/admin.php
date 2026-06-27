@@ -138,7 +138,7 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
             Route::delete('delete/{id}', [BannerController::class, 'delete'])->name('delete');
         });
 
-        Route::group(['prefix' => 'promotion', 'as' => 'promotion.', 'middleware' => ['module:promotion_management']], function () {
+        Route::group(['prefix' => 'promotion-deal', 'as' => 'promotion-deal.', 'middleware' => ['module:promotion_management']], function () {
             Route::get('list', [\App\Http\Controllers\Admin\PromotionController::class, 'index'])->name('list');
             Route::get('create', [\App\Http\Controllers\Admin\PromotionController::class, 'create'])->name('create');
             Route::post('store', [\App\Http\Controllers\Admin\PromotionController::class, 'store'])->name('store');

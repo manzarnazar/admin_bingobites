@@ -52,7 +52,7 @@ class PromotionController extends Controller
         });
 
         Toastr::success(translate('Promotion added successfully'));
-        return redirect()->route('admin.promotion.list');
+        return redirect()->route('admin.promotion-deal.list');
     }
 
     public function edit(int $id): Renderable
@@ -94,7 +94,7 @@ class PromotionController extends Controller
         });
 
         Toastr::success(translate('Promotion updated successfully'));
-        return redirect()->route('admin.promotion.list');
+        return redirect()->route('admin.promotion-deal.list');
     }
 
     public function status(Request $request): RedirectResponse

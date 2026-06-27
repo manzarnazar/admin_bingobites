@@ -465,8 +465,8 @@
                             </li>
 
                             <!-- PROMOTION DEALS -->
-                            <li class="navbar-vertical-aside-has-menu {{Request::is('admin/promotion*')?'active':''}}">
-                                <a class="js-navbar-vertical-aside-menu-link nav-link" href="{{route('admin.promotion.list')}}">
+                            <li class="navbar-vertical-aside-has-menu {{Request::is('admin/promotion-deal*')?'active':''}}">
+                                <a class="js-navbar-vertical-aside-menu-link nav-link" href="{{route('admin.promotion-deal.list')}}">
                                     <i class="tio-receipt nav-icon"></i>
                                     <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">{{translate('Promotion_Deals')}}</span>
                                 </a>

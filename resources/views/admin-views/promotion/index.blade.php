@@ -9,7 +9,7 @@
                 <img width="20" class="avatar-img" src="{{asset('public/assets/admin/img/icons/campaign.png')}}" alt="">
                 <span class="page-header-title">{{translate('Promotion_Deals')}}</span>
             </h2>
-            <a href="{{ route('admin.promotion.create') }}" class="btn btn-primary">
+            <a href="{{ route('admin.promotion-deal.create') }}" class="btn btn-primary">
                 <i class="tio-add"></i> {{translate('Add_New_Promotion')}}
             </a>
         </div>
@@ -46,17 +46,17 @@
                             <td>
                                 <label class="toggle-switch toggle-switch-sm">
                                     <input type="checkbox" class="toggle-switch-input redirect-url"
-                                           data-url="{{ route('admin.promotion.status', ['id' => $promotion->id, 'status' => $promotion->status ? 0 : 1]) }}"
+                                           data-url="{{ route('admin.promotion-deal.status', ['id' => $promotion->id, 'status' => $promotion->status ? 0 : 1]) }}"
                                         {{ $promotion->status ? 'checked' : '' }}>
                                     <span class="toggle-switch-label"><span class="toggle-switch-indicator"></span></span>
                                 </label>
                             </td>
                             <td>
                                 <div class="d-flex justify-content-center gap-2">
-                                    <a class="btn btn-outline-primary btn-sm" href="{{ route('admin.promotion.edit', $promotion->id) }}">
+                                    <a class="btn btn-outline-primary btn-sm" href="{{ route('admin.promotion-deal.edit', $promotion->id) }}">
                                         <i class="tio-edit"></i>
                                     </a>
-                                    <form action="{{ route('admin.promotion.delete') }}" method="post" onsubmit="return confirm('{{ translate('Want to delete this promotion ?') }}')">
+                                    <form action="{{ route('admin.promotion-deal.delete') }}" method="post" onsubmit="return confirm('{{ translate('Want to delete this promotion ?') }}')">
                                         @csrf @method('delete')
                                         <input type="hidden" name="id" value="{{ $promotion->id }}">
                                         <button type="submit" class="btn btn-outline-danger btn-sm"><i class="tio-delete"></i></button>
