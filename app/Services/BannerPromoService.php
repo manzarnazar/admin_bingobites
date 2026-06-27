@@ -51,8 +51,6 @@ class BannerPromoService
             'description' => 'nullable|max:1000',
             'promotion_type' => 'required|in:bogo,percent_off,fixed_amount',
             'reward_discount_value' => 'required|numeric|min:0',
-            'discount_cheapest_percent' => 'nullable|numeric|min:0|max:100',
-            'discount_expensive_percent' => 'nullable|numeric|min:0|max:100',
             'charge_paid_addons' => 'nullable|boolean',
             'charge_reward_addons' => 'nullable|boolean',
             'order_type_mode' => 'required|in:any,custom',
@@ -83,8 +81,8 @@ class BannerPromoService
         $banner->description = $request->description;
         $banner->promotion_type = $request->promotion_type;
         $banner->reward_discount_value = $request->reward_discount_value;
-        $banner->discount_cheapest_percent = $request->discount_cheapest_percent;
-        $banner->discount_expensive_percent = $request->discount_expensive_percent;
+        $banner->discount_cheapest_percent = null;
+        $banner->discount_expensive_percent = null;
         $banner->charge_paid_addons = $request->boolean('charge_paid_addons');
         $banner->charge_reward_addons = $request->boolean('charge_reward_addons');
         $banner->order_type_mode = $request->order_type_mode;
@@ -108,11 +106,6 @@ class BannerPromoService
 
         if ($banner->promotion_type === Banner::PROMOTION_TYPE_BOGO) {
             $banner->reward_discount_value = 100;
-            $banner->discount_cheapest_percent = $banner->discount_cheapest_percent ?? 100;
-            $banner->discount_expensive_percent = $banner->discount_expensive_percent ?? 100;
-        } elseif ($banner->promotion_type === Banner::PROMOTION_TYPE_PERCENT_OFF) {
-            $banner->discount_cheapest_percent = $banner->discount_cheapest_percent ?? $banner->reward_discount_value;
-            $banner->discount_expensive_percent = $banner->discount_expensive_percent ?? $banner->reward_discount_value;
         }
     }
 

@@ -130,5 +130,5 @@
         window.translateNoVariations = @json(translate('This product has no variations. Click Add to include it.'));
         window.translateLoadFailed = @json(translate('Could not load product details. Please try again.'));
     </script>
-    <script src="{{ asset('public/assets/admin/js/banner-promo.js') }}?v=4"></script>
+    <script src="{{ asset('public/assets/admin/js/banner-promo.js') }}?v=5"></script>
 @endpush

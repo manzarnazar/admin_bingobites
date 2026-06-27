@@ -197,31 +197,6 @@ class PromoOrderService
             return 0;
         }
 
-        if ($groupTwoItems->count() <= 1) {
-            return (float) ($banner->reward_discount_value ?? 0);
-        }
-
-        $prices = $groupTwoItems
-            ->map(fn (BannerGroupItem $item) => (float) ($item->product?->price ?? 0))
-            ->filter(fn ($price) => $price > 0)
-            ->values();
-
-        if ($prices->count() <= 1) {
-            return (float) ($banner->reward_discount_value ?? 0);
-        }
-
-        $minPrice = $prices->min();
-        $maxPrice = $prices->max();
-        $rewardPrice = (float) ($groupTwoItems->last()?->product?->price ?? 0);
-
-        if ($rewardPrice <= $minPrice && $banner->discount_cheapest_percent !== null) {
-            return (float) $banner->discount_cheapest_percent;
-        }
-
-        if ($rewardPrice >= $maxPrice && $banner->discount_expensive_percent !== null) {
-            return (float) $banner->discount_expensive_percent;
-        }
-
         return (float) ($banner->reward_discount_value ?? 0);
     }
 
@@ -288,8 +263,6 @@ class PromoOrderService
             'image' => $banner->image,
             'promotion_type' => $banner->promotion_type ?? Banner::PROMOTION_TYPE_BOGO,
             'reward_discount_value' => $banner->reward_discount_value,
-            'discount_cheapest_percent' => $banner->discount_cheapest_percent,
-            'discount_expensive_percent' => $banner->discount_expensive_percent,
             'charge_paid_addons' => $banner->charge_paid_addons,
             'charge_reward_addons' => $banner->charge_reward_addons,
             'order_type_mode' => $banner->order_type_mode,

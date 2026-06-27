@@ -39,12 +39,24 @@
         reader.readAsDataURL(input.files[0]);
     }
 
+    function initSelect2() {
+        if (typeof window.jQuery === "undefined" || !window.jQuery.HSCore) {
+            return;
+        }
+
+        window.jQuery(".js-select2-custom").each(function () {
+            window.jQuery.HSCore.components.HSSelect2.init(window.jQuery(this));
+        });
+    }
+
+    function getPromotionType() {
+        const select = $("#promotion-type-select");
+        return select ? select.value : "bogo";
+    }
+
     function updatePromotionTypeFields() {
-        const checked = document.querySelector(".promotion-type-input:checked");
-        const type = checked ? checked.value : "bogo";
+        const type = getPromotionType();
         const rewardInput = $("#reward-discount-value");
-        const cheapestInput = $("#discount-cheapest-percent");
-        const expensiveInput = $("#discount-expensive-percent");
         const label = $("#reward-discount-label");
 
         if (!rewardInput || !label) return;
@@ -52,27 +64,21 @@
         if (type === "bogo") {
             rewardInput.value = "100";
             rewardInput.readOnly = true;
-            if (cheapestInput && !cheapestInput.value) cheapestInput.value = "100";
-            if (expensiveInput && !expensiveInput.value) expensiveInput.value = "100";
             label.textContent = "Reward Discount (%)";
         } else if (type === "percent_off") {
             rewardInput.readOnly = false;
             label.textContent = "Reward Discount (%)";
-            if (cheapestInput && !cheapestInput.value) cheapestInput.value = rewardInput.value;
-            if (expensiveInput && !expensiveInput.value) expensiveInput.value = rewardInput.value;
         } else {
             rewardInput.readOnly = false;
             label.textContent = "Fixed Discount Amount";
-            if (cheapestInput) cheapestInput.value = "";
-            if (expensiveInput) expensiveInput.value = "";
         }
     }
 
     function toggleOrderTypeOptions() {
-        const checked = document.querySelector(".order-type-mode:checked");
+        const select = $("#order-type-mode");
         const options = $("#order-type-options");
-        if (options) {
-            options.style.display = checked && checked.value === "custom" ? "" : "none";
+        if (options && select) {
+            options.style.display = select.value === "custom" ? "" : "none";
         }
     }
 
@@ -339,6 +345,7 @@
     }
 
     document.addEventListener("DOMContentLoaded", function () {
+        initSelect2();
         updatePromotionTypeFields();
         toggleOrderTypeOptions();
 
@@ -348,21 +355,14 @@
             });
         });
 
-        $all(".promotion-type-input").forEach(function (input) {
-            input.addEventListener("change", updatePromotionTypeFields);
-        });
+        const promotionTypeSelect = $("#promotion-type-select");
+        if (promotionTypeSelect) {
+            promotionTypeSelect.addEventListener("change", updatePromotionTypeFields);
+        }
 
-        const rewardInput = $("#reward-discount-value");
-        if (rewardInput) {
-            rewardInput.addEventListener("input", function () {
-                const checked = document.querySelector(".promotion-type-input:checked");
-                if (checked && checked.value === "percent_off") {
-                    const cheapest = $("#discount-cheapest-percent");
-                    const expensive = $("#discount-expensive-percent");
-                    if (cheapest) cheapest.value = rewardInput.value;
-                    if (expensive) expensive.value = rewardInput.value;
-                }
-            });
+        const orderTypeSelect = $("#order-type-mode");
+        if (orderTypeSelect) {
+            orderTypeSelect.addEventListener("change", toggleOrderTypeOptions);
         }
 
         $all(".order-type-mode").forEach(function (input) {
