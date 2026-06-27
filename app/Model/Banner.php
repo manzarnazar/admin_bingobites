@@ -10,6 +10,7 @@ class Banner extends Model
     protected $casts = [
         'product_id' => 'integer',
         'category_id' => 'integer',
+        'promotion_id' => 'integer',
         'created_at' => 'datetime',
         'updated_at' => 'datetime'
     ];
@@ -22,6 +23,11 @@ class Banner extends Model
     public function product()
     {
         return $this->belongsTo(Product::class, 'product_id', 'id');
+    }
+
+    public function promotion()
+    {
+        return $this->belongsTo(Promotion::class, 'promotion_id', 'id');
     }
 
     public function getImageFullPathAttribute(): string

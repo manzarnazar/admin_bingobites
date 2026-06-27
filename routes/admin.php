@@ -138,6 +138,16 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
             Route::delete('delete/{id}', [BannerController::class, 'delete'])->name('delete');
         });
 
+        Route::group(['prefix' => 'promotion', 'as' => 'promotion.', 'middleware' => ['module:promotion_management']], function () {
+            Route::get('list', [\App\Http\Controllers\Admin\PromotionController::class, 'index'])->name('list');
+            Route::get('create', [\App\Http\Controllers\Admin\PromotionController::class, 'create'])->name('create');
+            Route::post('store', [\App\Http\Controllers\Admin\PromotionController::class, 'store'])->name('store');
+            Route::get('edit/{id}', [\App\Http\Controllers\Admin\PromotionController::class, 'edit'])->name('edit');
+            Route::put('update/{id}', [\App\Http\Controllers\Admin\PromotionController::class, 'update'])->name('update');
+            Route::get('status/{id}/{status}', [\App\Http\Controllers\Admin\PromotionController::class, 'status'])->name('status');
+            Route::delete('delete', [\App\Http\Controllers\Admin\PromotionController::class, 'delete'])->name('delete');
+        });
+
         Route::group(['prefix' => 'attribute', 'as' => 'attribute.', 'middleware' => ['module:product_management']], function () {
             Route::get('add-new', 'AttributeController@index')->name('add-new');
             Route::post('store', 'AttributeController@store')->name('store');

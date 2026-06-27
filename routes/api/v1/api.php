@@ -27,6 +27,7 @@ use App\Http\Controllers\Api\V1\OrderController;
 use App\Http\Controllers\Api\V1\PageController;
 use App\Http\Controllers\Api\V1\PosController;
 use App\Http\Controllers\Api\V1\ProductController;
+use App\Http\Controllers\Api\V1\PromotionController;
 use App\Http\Controllers\Api\V1\TableConfigController;
 use App\Http\Controllers\Api\V1\TableController;
 use App\Http\Controllers\Api\V1\TagController;
@@ -130,6 +131,11 @@ Route::group(['namespace' => 'Api\V1', 'middleware' => 'localization'], function
 
     Route::group(['prefix' => 'banners', 'middleware' => 'branch_adder'], function () {
         Route::get('/', [BannerController::class, 'getBanners']);
+    });
+
+    Route::group(['prefix' => 'promotions', 'middleware' => 'branch_adder'], function () {
+        Route::get('{id}', [PromotionController::class, 'show']);
+        Route::get('{id}/eligibility', [PromotionController::class, 'eligibility'])->middleware('auth:api');
     });
 
     Route::group(['prefix' => 'notifications'], function () {

@@ -33,6 +33,8 @@ class Order extends Model
         'is_cutlery_required' => 'integer',
         'bring_change_amount' => 'float',
         'referral_discount' => 'float',
+        'promotion_discount_amount' => 'float',
+        'promotion_id' => 'integer',
         'preparation_time' => 'integer',
         'cooking_started_at' => 'datetime',
     ];
@@ -176,5 +178,10 @@ class Order extends Model
     public function order_change_amount()
     {
         return $this->hasOne(OrderChangeAmount::class, 'order_id');
+    }
+
+    public function promotion(): BelongsTo
+    {
+        return $this->belongsTo(Promotion::class);
     }
 }
