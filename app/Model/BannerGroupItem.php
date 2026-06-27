@@ -7,6 +7,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class BannerGroupItem extends Model
 {
+    protected $guarded = [];
+
     protected $casts = [
         'banner_id' => 'integer',
         'group_number' => 'integer',

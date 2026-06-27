@@ -6,9 +6,43 @@ use App\Model\Banner;
 use App\Model\BannerGroupItem;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Validation\ValidationException;
 
 class BannerPromoService
 {
+    public function ensurePromoSchemaReady(): void
+    {
+        $requiredColumns = [
+            'headline',
+            'description',
+            'promotion_type',
+            'reward_discount_value',
+            'charge_paid_addons',
+            'charge_reward_addons',
+            'order_type_mode',
+            'max_reward_qty',
+        ];
+
+        foreach ($requiredColumns as $column) {
+            if (!Schema::hasColumn('banners', $column)) {
+                throw ValidationException::withMessages([
+                    'title' => [
+                        translate('Promo banner database migration is missing. Run php artisan migrate on the server, then try again.'),
+                    ],
+                ]);
+            }
+        }
+
+        if (!Schema::hasTable('banner_group_items')) {
+            throw ValidationException::withMessages([
+                'title' => [
+                    translate('Promo banner group table is missing. Run php artisan migrate on the server, then try again.'),
+                ],
+            ]);
+        }
+    }
+
     public function validatePromoRequest(Request $request): array
     {
         return $request->validate([
@@ -133,6 +167,7 @@ class BannerPromoService
     public function store(Request $request, ?string $imageName): Banner
     {
         return DB::transaction(function () use ($request, $imageName) {
+            $this->ensurePromoSchemaReady();
             $data = $this->validatePromoRequest($request);
 
             $banner = new Banner();
@@ -150,6 +185,7 @@ class BannerPromoService
     public function update(Banner $banner, Request $request, ?string $imageName = null): Banner
     {
         return DB::transaction(function () use ($banner, $request, $imageName) {
+            $this->ensurePromoSchemaReady();
             $data = $this->validatePromoRequest($request);
 
             $this->fillBannerFromRequest($banner, $request);

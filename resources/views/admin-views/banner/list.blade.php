@@ -119,6 +119,7 @@
             groupOneCount: 0,
             groupTwoCount: 0,
         };
+        window.translateRemove = @json(translate('Remove'));
     </script>
-    <script src="{{ asset('public/assets/admin/js/banner-promo.js') }}"></script>
+    <script src="{{ asset('public/assets/admin/js/banner-promo.js') }}?v=2"></script>
 @endpush

@@ -7,6 +7,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class PromotionUsage extends Model
 {
+    protected $guarded = [];
+
     protected $casts = [
         'banner_id' => 'integer',
         'user_id' => 'integer',

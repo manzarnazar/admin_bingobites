@@ -37,6 +37,7 @@
             groupOneCount: {{ Schema::hasTable('banner_group_items') ? $banner->groupItems->where('group_number', 1)->count() : 0 }},
             groupTwoCount: {{ Schema::hasTable('banner_group_items') ? $banner->groupItems->where('group_number', 2)->count() : 0 }},
         };
+        window.translateRemove = @json(translate('Remove'));
     </script>
-    <script src="{{ asset('public/assets/admin/js/banner-promo.js') }}"></script>
+    <script src="{{ asset('public/assets/admin/js/banner-promo.js') }}?v=2"></script>
 @endpush
