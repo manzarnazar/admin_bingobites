@@ -112,19 +112,11 @@ class OrderController extends Controller
             'order_type' => 'required|in:take_away,delivery,dine_in',
             'distance' => 'required|numeric',
             'coupon_code' => 'nullable|string',
-            'promotion_id' => 'nullable|integer|exists:promotions,id',
             'guest_id' => $authenticatedUser ? 'nullable' : 'required',
         ]);
 
         if ($validator->fails()) {
             return response()->json(['errors' => Helpers::error_processor($validator)], 403);
-        }
-
-        if ($request->filled('promotion_id') && !$authenticatedUser) {
-            return response()->json(['errors' => [[
-                'code' => 'promotion_id',
-                'message' => translate('Please login to use this promotion'),
-            ]]], 403);
         }
 
         $userId = $authenticatedUser?->id ?? $request->input('guest_id');
@@ -144,7 +136,6 @@ class OrderController extends Controller
                 isGuest: $isGuest,
                 deliveryChargeInfo: $deliveryChargeInfo,
                 couponCode: $request->input('coupon_code'),
-                promotionId: $request->input('promotion_id') ? (int) $request->input('promotion_id') : null,
             );
         } catch (ValidationException $e) {
             return response()->json(['errors' => $e->errors()], 403);
@@ -166,8 +157,6 @@ class OrderController extends Controller
             'tax_amount' => Helpers::set_price($amountData['total_product_and_addon_tax_amount']),
             'referral_discount_amount' => Helpers::set_price($amountData['referral_discount_amount']),
             'coupon_discount_amount' => Helpers::set_price($amountData['coupon_discount_amount']),
-            'promotion_discount_amount' => Helpers::set_price($amountData['promotion_discount_amount'] ?? 0),
-            'promotion_id' => $amountData['promotion_id'] ?? null,
             'delivery_charge_amount' => Helpers::set_price($amountData['delivery_charge_amount']),
         ], 200);
     }
@@ -199,18 +188,10 @@ class OrderController extends Controller
             'guest_id' => $authenticatedUser ? 'nullable' : 'required',
             'is_partial' => 'required|in:0,1',
             'cart' => 'required|array|min:1',
-            'promotion_id' => 'nullable|integer|exists:promotions,id',
         ]);
 
         if ($validator->fails()) {
             return response()->json(['errors' => Helpers::error_processor($validator)], 403);
-        }
-
-        if ($request->filled('promotion_id') && !$authenticatedUser) {
-            return response()->json(['errors' => [[
-                'code' => 'promotion_id',
-                'message' => translate('Please login to use this promotion'),
-            ]]], 403);
         }
 
         Helpers::update_daily_product_stock();
@@ -235,7 +216,6 @@ class OrderController extends Controller
                 isGuest : $userType,
                 deliveryChargeInfo: $deliveryChargeInfo,
                 couponCode: $request['coupon_code'] ?? null,
-                promotionId: $request->filled('promotion_id') ? (int) $request['promotion_id'] : null,
             );
 
         }  catch (ValidationException $e) {
@@ -296,8 +276,6 @@ class OrderController extends Controller
                 'is_guest' => $userType,
                 'order_amount' => Helpers::set_price($amountData['order_amount']),
                 'coupon_discount_amount' => Helpers::set_price($amountData['coupon_discount_amount']),
-                'promotion_discount_amount' => Helpers::set_price($amountData['promotion_discount_amount'] ?? 0),
-                'promotion_id' => $amountData['promotion_id'] ?? null,
                 'coupon_discount_title' => $request->coupon_discount_title ?: null,
                 'payment_status' => $paymentStatus,
                 'order_status' => $orderStatus,
@@ -460,14 +438,6 @@ class OrderController extends Controller
                         $this->sendNotificationToReferralUser(referredUser: $referUser);
                     }
                 }
-            }
-
-            if (!empty($amountData['promotion_id']) && $userType === 0) {
-                app(\App\Services\Promotion\PromotionService::class)->recordRedemption(
-                    (int) $amountData['promotion_id'],
-                    (int) $userId,
-                    (int) $orderId
-                );
             }
 
             DB::commit();

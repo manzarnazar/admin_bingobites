@@ -9,7 +9,6 @@ use App\Model\Product;
 use App\Model\ProductByBranch;
 use App\Model\WalletTransaction;
 use App\Models\OrderPartialPayment;
-use App\Services\Promotion\PromotionService;
 use App\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Str;
@@ -17,7 +16,7 @@ use function App\CentralLogics\translate;
 
 trait CalculateOrderDataTrait
 {
-    protected function calculateOrderAmount(array $cart, int|string $userId, int $isGuest, array $deliveryChargeInfo = [],  ?string $couponCode = null, ?int $promotionId = null): array|JsonResponse
+    protected function calculateOrderAmount(array $cart, int|string $userId, int $isGuest, array $deliveryChargeInfo = [],  ?string $couponCode = null): array|JsonResponse
     {
         if (empty($cart)) {
             return [
@@ -43,10 +42,6 @@ trait CalculateOrderDataTrait
         $totalAddonTax = 0;
         $referralDiscountAmount = 0;
         $appliedCouponCode = null;
-        $promotionDiscountAmount = 0;
-        $appliedPromotionId = null;
-        $promotionDiscountAmount = 0;
-        $appliedPromotionId = null;
 
         foreach ($cart as $cartItem) {
             $product = Product::with([
@@ -121,15 +116,15 @@ trait CalculateOrderDataTrait
 
                 if (count($productVariations)) {
                     $variationData = Helpers::get_varient($productVariations, $cartItem['variations']);
-                    $price = $product->price + $variationData['price'];
+                    $price = $product['price'] + $variationData['price'];
                     $variations = $variationData['variations'];
                     $pricedVariationLabels = Helpers::extract_priced_variation_option_labels($variationData['variations'] ?? []);
                 } else {
-                    $price = $product->price;
+                    $price = $product['price'];
                 }
                 $discountData = [
-                    'discount_type' => $product->discount_type,
-                    'discount' => $product->discount,
+                    'discount_type' => $product['discount_type'],
+                    'discount' => $product['discount'],
                 ];
             }
 
@@ -173,27 +168,6 @@ trait CalculateOrderDataTrait
 
         $totalPriceForCalculation -= $referralDiscountAmount;
 
-        if ($promotionId) {
-            $promotionService = app(PromotionService::class);
-            $promotionResult = $promotionService->applyToCart(
-                cart: $cart,
-                promotionId: $promotionId,
-                userId: (int) $userId,
-                isGuest: $isGuest,
-                deliveryChargeInfo: $deliveryChargeInfo,
-                couponCode: $couponCode,
-                rejectOnExclusiveConflict: false
-            );
-            $promotionDiscountAmount = $promotionResult['promotion_discount_amount'];
-            $appliedPromotionId = $promotionResult['promotion_id'];
-
-            if (!empty($promotionResult['coupon_code_blocked'])) {
-                $couponCode = null;
-            }
-        }
-
-        $totalPriceForCalculation -= $promotionDiscountAmount;
-
         if (!empty($couponCode)) {
             $couponData = $this->applyCoupon(
                 code: $couponCode,
@@ -210,7 +184,6 @@ trait CalculateOrderDataTrait
             + $totalAddonPrice
             + $totalAddonTax
             - $totalDiscountOnProduct
-            - $promotionDiscountAmount
             - $couponDiscountAmount
             - $referralDiscountAmount;
 
@@ -226,8 +199,6 @@ trait CalculateOrderDataTrait
         return [
             'order_amount' => $totalOrderedAmount,
             'coupon_discount_amount' => $couponDiscountAmount,
-            'promotion_discount_amount' => $promotionDiscountAmount,
-            'promotion_id' => $appliedPromotionId,
             'delivery_charge_amount' => $deliveryChargeAmount,
             'total_product_tax_amount' => $totalProductTaxAmount,
             'total_product_and_addon_tax_amount' => $totalProductTaxAmount + $totalAddonTax,
