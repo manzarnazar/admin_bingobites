@@ -72,8 +72,8 @@
                                         <td>{{ $banners->firstItem() + $key }}</td>
                                         <td><img class="img-vertical-150" src="{{ $banner->imageFullPath }}" alt=""></td>
                                         <td><div class="max-w300 text-wrap">{{ $banner->title }}</div></td>
-                                        <td>{{ $banner->headline }}</td>
-                                        <td>{{ str_replace('_', ' ', $banner->promotion_type) }}</td>
+                                        <td>{{ $banner->headline ?? $banner->title }}</td>
+                                        <td>{{ str_replace('_', ' ', $banner->promotion_type ?? 'bogo') }}</td>
                                         <td>
                                             <label class="switcher">
                                                 <input class="switcher_input status-change" type="checkbox" {{ $banner->status == 1 ? 'checked' : '' }} id="{{ $banner->id }}" data-url="{{ route('admin.banner.status', [$banner->id, 0]) }}">

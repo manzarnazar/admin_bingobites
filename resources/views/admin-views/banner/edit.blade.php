@@ -34,8 +34,8 @@
     <script>
         window.bannerPromoConfig = {
             productVariationsUrl: "{{ url('admin/banner/product-variations') }}",
-            groupOneCount: {{ $banner->groupItems->where('group_number', 1)->count() }},
-            groupTwoCount: {{ $banner->groupItems->where('group_number', 2)->count() }},
+            groupOneCount: {{ Schema::hasTable('banner_group_items') ? $banner->groupItems->where('group_number', 1)->count() : 0 }},
+            groupTwoCount: {{ Schema::hasTable('banner_group_items') ? $banner->groupItems->where('group_number', 2)->count() : 0 }},
         };
     </script>
     <script src="{{ asset('public/assets/admin/js/banner-promo.js') }}"></script>

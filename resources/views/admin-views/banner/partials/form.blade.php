@@ -1,9 +1,12 @@
 @php
-    $isEdit = isset($banner);
-    $groupOneItems = $isEdit
+    use Illuminate\Support\Facades\Schema;
+
+    $banner = $banner ?? null;
+    $isEdit = $banner !== null;
+    $groupOneItems = $isEdit && Schema::hasTable('banner_group_items')
         ? $banner->groupItems->where('group_number', 1)->values()
         : collect();
-    $groupTwoItems = $isEdit
+    $groupTwoItems = $isEdit && Schema::hasTable('banner_group_items')
         ? $banner->groupItems->where('group_number', 2)->values()
         : collect();
 @endphp
@@ -12,15 +15,15 @@
     <div class="col-lg-6">
         <div class="form-group">
             <label class="input-label">{{ translate('title') }} ({{ translate('admin') }})<span class="text-danger ml-1">*</span></label>
-            <input type="text" name="title" class="form-control" value="{{ old('title', $banner->title ?? '') }}" required>
+            <input type="text" name="title" class="form-control" value="{{ old('title', $banner?->title ?? '') }}" required>
         </div>
         <div class="form-group">
             <label class="input-label">{{ translate('headline') }}<span class="text-danger ml-1">*</span></label>
-            <input type="text" name="headline" class="form-control" value="{{ old('headline', $banner->headline ?? '') }}" required>
+            <input type="text" name="headline" class="form-control" value="{{ old('headline', $banner?->headline ?? '') }}" required>
         </div>
         <div class="form-group">
             <label class="input-label">{{ translate('description') }}</label>
-            <textarea name="description" class="form-control" rows="3">{{ old('description', $banner->description ?? '') }}</textarea>
+            <textarea name="description" class="form-control" rows="3">{{ old('description', $banner?->description ?? '') }}</textarea>
         </div>
     </div>
     <div class="col-lg-6">
@@ -100,7 +103,7 @@
     <div class="col-md-4">
         <div class="form-group">
             <label class="input-label d-block">{{ translate('type') }}</label>
-            @php $promotionType = old('promotion_type', $banner->promotion_type ?? 'bogo'); @endphp
+            @php $promotionType = old('promotion_type', $banner?->promotion_type ?? 'bogo'); @endphp
             <div class="custom-control custom-radio custom-control-inline">
                 <input type="radio" id="promo-bogo" name="promotion_type" value="bogo" class="custom-control-input promotion-type-input" {{ $promotionType === 'bogo' ? 'checked' : '' }}>
                 <label class="custom-control-label" for="promo-bogo">BOGO</label>
@@ -118,17 +121,17 @@
     <div class="col-md-4">
         <div class="form-group">
             <label class="input-label" id="reward-discount-label">{{ translate('Reward Discount') }}</label>
-            <input type="number" step="0.01" min="0" name="reward_discount_value" id="reward-discount-value" class="form-control" value="{{ old('reward_discount_value', $banner->reward_discount_value ?? 100) }}" required>
+            <input type="number" step="0.01" min="0" name="reward_discount_value" id="reward-discount-value" class="form-control" value="{{ old('reward_discount_value', $banner?->reward_discount_value ?? 100) }}" required>
         </div>
     </div>
     <div class="col-md-4">
         <div class="form-group">
             <label class="input-label">{{ translate('Discount for cheapest item') }} (%)</label>
-            <input type="number" step="0.01" min="0" max="100" name="discount_cheapest_percent" id="discount-cheapest-percent" class="form-control" value="{{ old('discount_cheapest_percent', $banner->discount_cheapest_percent ?? '') }}">
+            <input type="number" step="0.01" min="0" max="100" name="discount_cheapest_percent" id="discount-cheapest-percent" class="form-control" value="{{ old('discount_cheapest_percent', $banner?->discount_cheapest_percent ?? '') }}">
         </div>
         <div class="form-group mb-0">
             <label class="input-label">{{ translate('Discount for most expensive item') }} (%)</label>
-            <input type="number" step="0.01" min="0" max="100" name="discount_expensive_percent" id="discount-expensive-percent" class="form-control" value="{{ old('discount_expensive_percent', $banner->discount_expensive_percent ?? '') }}">
+            <input type="number" step="0.01" min="0" max="100" name="discount_expensive_percent" id="discount-expensive-percent" class="form-control" value="{{ old('discount_expensive_percent', $banner?->discount_expensive_percent ?? '') }}">
         </div>
     </div>
 </div>
@@ -136,13 +139,13 @@
 <div class="row">
     <div class="col-md-6">
         <div class="custom-control custom-checkbox mb-2">
-            <input type="checkbox" class="custom-control-input" id="charge-paid-addons" name="charge_paid_addons" value="1" {{ old('charge_paid_addons', $banner->charge_paid_addons ?? true) ? 'checked' : '' }}>
+            <input type="checkbox" class="custom-control-input" id="charge-paid-addons" name="charge_paid_addons" value="1" {{ old('charge_paid_addons', $banner?->charge_paid_addons ?? true) ? 'checked' : '' }}>
             <label class="custom-control-label" for="charge-paid-addons">{{ translate('Charge extra for Group 1 addons/modifiers') }}</label>
         </div>
     </div>
     <div class="col-md-6">
         <div class="custom-control custom-checkbox mb-2">
-            <input type="checkbox" class="custom-control-input" id="charge-reward-addons" name="charge_reward_addons" value="1" {{ old('charge_reward_addons', $banner->charge_reward_addons ?? false) ? 'checked' : '' }}>
+            <input type="checkbox" class="custom-control-input" id="charge-reward-addons" name="charge_reward_addons" value="1" {{ old('charge_reward_addons', $banner?->charge_reward_addons ?? false) ? 'checked' : '' }}>
             <label class="custom-control-label" for="charge-reward-addons">{{ translate('Charge extra for Group 2 addons/modifiers') }}</label>
         </div>
     </div>
@@ -151,8 +154,8 @@
 <hr>
 <h5 class="mb-3">{{ translate('Order type') }}</h5>
 @php
-    $orderTypeMode = old('order_type_mode', $banner->order_type_mode ?? 'any');
-    $selectedOrderTypes = old('order_types', $banner->order_types ?? []);
+    $orderTypeMode = old('order_type_mode', $banner?->order_type_mode ?? 'any');
+    $selectedOrderTypes = old('order_types', $banner?->order_types ?? []);
 @endphp
 <div class="row">
     <div class="col-md-4">
@@ -179,7 +182,7 @@
 
 <hr>
 <h5 class="mb-3">{{ translate('Limits') }}</h5>
-@php $selectedPayments = old('payment_methods', $banner->payment_methods ?? []); @endphp
+@php $selectedPayments = old('payment_methods', $banner?->payment_methods ?? []); @endphp
 <div class="row">
     <div class="col-md-4">
         <div class="form-group">
@@ -194,32 +197,32 @@
     </div>
     <div class="col-md-4">
         <div class="custom-control custom-checkbox mb-3">
-            <input type="checkbox" class="custom-control-input" id="once-per-customer" name="once_per_customer" value="1" {{ old('once_per_customer', $banner->once_per_customer ?? false) ? 'checked' : '' }}>
+            <input type="checkbox" class="custom-control-input" id="once-per-customer" name="once_per_customer" value="1" {{ old('once_per_customer', $banner?->once_per_customer ?? false) ? 'checked' : '' }}>
             <label class="custom-control-label" for="once-per-customer">{{ translate('Only once per client') }}</label>
         </div>
         <div class="form-group">
             <label class="input-label">{{ translate('Maximum reward quantity') }}</label>
-            <input type="number" min="1" name="max_reward_qty" class="form-control" value="{{ old('max_reward_qty', $banner->max_reward_qty ?? 1) }}" required>
+            <input type="number" min="1" name="max_reward_qty" class="form-control" value="{{ old('max_reward_qty', $banner?->max_reward_qty ?? 1) }}" required>
         </div>
     </div>
     <div class="col-md-4">
         <div class="form-group">
             <label class="input-label">{{ translate('Usage per customer') }}</label>
-            <input type="number" min="1" name="usage_per_customer" class="form-control" value="{{ old('usage_per_customer', $banner->usage_per_customer ?? '') }}">
+            <input type="number" min="1" name="usage_per_customer" class="form-control" value="{{ old('usage_per_customer', $banner?->usage_per_customer ?? '') }}">
         </div>
         <div class="form-group">
             <label class="input-label">{{ translate('Total usage') }}</label>
-            <input type="number" min="1" name="total_usage_limit" class="form-control" value="{{ old('total_usage_limit', $banner->total_usage_limit ?? '') }}">
+            <input type="number" min="1" name="total_usage_limit" class="form-control" value="{{ old('total_usage_limit', $banner?->total_usage_limit ?? '') }}">
         </div>
     </div>
     <div class="col-md-4">
         <div class="form-group">
             <label class="input-label">{{ translate('start') }} {{ translate('date') }}</label>
-            <input type="datetime-local" name="start_date" class="form-control" value="{{ old('start_date', isset($banner->start_date) ? $banner->start_date->format('Y-m-d\TH:i') : '') }}">
+            <input type="datetime-local" name="start_date" class="form-control" value="{{ old('start_date', $banner?->start_date?->format('Y-m-d\TH:i') ?? '') }}">
         </div>
         <div class="form-group">
             <label class="input-label">{{ translate('end') }} {{ translate('date') }}</label>
-            <input type="datetime-local" name="end_date" class="form-control" value="{{ old('end_date', isset($banner->end_date) ? $banner->end_date->format('Y-m-d\TH:i') : '') }}">
+            <input type="datetime-local" name="end_date" class="form-control" value="{{ old('end_date', $banner?->end_date?->format('Y-m-d\TH:i') ?? '') }}">
         </div>
     </div>
 </div>

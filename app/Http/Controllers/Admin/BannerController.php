@@ -12,6 +12,7 @@ use Illuminate\Contracts\Support\Renderable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Schema;
 
 class BannerController extends Controller
 {
@@ -38,8 +39,11 @@ class BannerController extends Controller
                 foreach ($keywords as $keyword) {
                     $query->where(function ($inner) use ($keyword) {
                         $inner->where('title', 'LIKE', "%$keyword%")
-                            ->orWhere('headline', 'LIKE', "%$keyword%")
                             ->orWhere('id', 'LIKE', "%$keyword%");
+
+                        if (Schema::hasColumn('banners', 'headline')) {
+                            $inner->orWhere('headline', 'LIKE', "%$keyword%");
+                        }
                     });
                 }
             })
@@ -63,7 +67,13 @@ class BannerController extends Controller
 
     public function edit($id): Renderable
     {
-        $banner = $this->banner->with('groupItems.product')->findOrFail($id);
+        $query = $this->banner->newQuery();
+
+        if (Schema::hasTable('banner_group_items')) {
+            $query->with('groupItems.product');
+        }
+
+        $banner = $query->findOrFail($id);
         $products = $this->product->orderBy('name')->get(['id', 'name']);
         $paymentMethods = $this->paymentMethodOptions();
 

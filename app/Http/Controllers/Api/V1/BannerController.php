@@ -7,6 +7,7 @@ use App\Model\Banner;
 use App\Services\PromoOrderService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Schema;
 
 class BannerController extends Controller
 {
@@ -19,11 +20,15 @@ class BannerController extends Controller
     {
         $branchId = (int) ($request->header('branch-id') ?? 0);
 
-        $banners = $this->banner
-            ->with(['groupItems.product.rating', 'groupItems.product.branch_product'])
+        $query = $this->banner
             ->active()
-            ->currentlyValid()
-            ->get();
+            ->currentlyValid();
+
+        if (Schema::hasTable('banner_group_items')) {
+            $query->with(['groupItems.product.rating', 'groupItems.product.branch_product']);
+        }
+
+        $banners = $query->get();
 
         $formatted = $banners
             ->map(fn (Banner $banner) => $this->promoOrderService->formatBannerForApi($banner, $branchId))

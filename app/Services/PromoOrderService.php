@@ -7,16 +7,20 @@ use App\Model\Banner;
 use App\Model\BannerGroupItem;
 use App\Model\PromotionUsage;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
 
 class PromoOrderService
 {
     public function findActiveBanner(int $promotionId): ?Banner
     {
-        return Banner::with('groupItems')
-            ->active()
-            ->currentlyValid()
-            ->find($promotionId);
+        $query = Banner::active()->currentlyValid();
+
+        if (Schema::hasTable('banner_group_items')) {
+            $query->with('groupItems');
+        }
+
+        return $query->find($promotionId);
     }
 
     public function validatePromotion(
@@ -222,8 +226,11 @@ class PromoOrderService
     {
         $groupOne = [];
         $groupTwo = [];
+        $groupItems = Schema::hasTable('banner_group_items')
+            ? ($banner->relationLoaded('groupItems') ? $banner->groupItems : $banner->groupItems()->get())
+            : collect();
 
-        foreach ($banner->groupItems as $groupItem) {
+        foreach ($groupItems as $groupItem) {
             $product = $groupItem->product;
             if (!$product) {
                 continue;
@@ -248,10 +255,10 @@ class PromoOrderService
         return [
             'id' => $banner->id,
             'title' => $banner->title,
-            'headline' => $banner->headline,
+            'headline' => $banner->headline ?? $banner->title,
             'description' => $banner->description,
             'image' => $banner->image,
-            'promotion_type' => $banner->promotion_type,
+            'promotion_type' => $banner->promotion_type ?? Banner::PROMOTION_TYPE_BOGO,
             'reward_discount_value' => $banner->reward_discount_value,
             'discount_cheapest_percent' => $banner->discount_cheapest_percent,
             'discount_expensive_percent' => $banner->discount_expensive_percent,

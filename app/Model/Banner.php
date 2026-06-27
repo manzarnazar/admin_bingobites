@@ -5,6 +5,7 @@ namespace App\Model;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 
 class Banner extends Model
@@ -40,6 +41,10 @@ class Banner extends Model
 
     public function scopeCurrentlyValid($query)
     {
+        if (!Schema::hasColumn('banners', 'start_date')) {
+            return $query;
+        }
+
         $now = Carbon::now();
 
         return $query
