@@ -468,8 +468,13 @@ class OrderController extends Controller
             ], 200);
 
         } catch (\Exception $e) {
-            DB::rollBack(); // Rollback transaction on failure
-            return response()->json([$e], 403);
+            DB::rollBack();
+            return response()->json([
+                'errors' => [[
+                    'code' => 'order_place',
+                    'message' => $e->getMessage(),
+                ]],
+            ], 403);
         }
     }
 

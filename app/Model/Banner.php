@@ -106,6 +106,20 @@ class Banner extends Model
             return true;
         }
 
-        return $paymentMethod !== null && in_array($paymentMethod, $this->payment_methods, true);
+        if ($paymentMethod === null) {
+            return false;
+        }
+
+        $normalized = self::normalizePaymentMethodCategory($paymentMethod);
+
+        return in_array($normalized, $this->payment_methods, true);
+    }
+
+    public static function normalizePaymentMethodCategory(string $paymentMethod): string
+    {
+        return match ($paymentMethod) {
+            'cash_on_delivery', 'wallet_payment', 'offline_payment', 'digital_payment' => $paymentMethod,
+            default => 'digital_payment',
+        };
     }
 }

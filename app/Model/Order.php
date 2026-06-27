@@ -32,6 +32,8 @@ class Order extends Model
         'table_order_id' => 'integer',
         'is_cutlery_required' => 'integer',
         'bring_change_amount' => 'float',
+        'promotion_id' => 'integer',
+        'promotion_discount_amount' => 'float',
         'referral_discount' => 'float',
         'preparation_time' => 'integer',
         'cooking_started_at' => 'datetime',
