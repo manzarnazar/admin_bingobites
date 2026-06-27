@@ -265,18 +265,33 @@ class PromoOrderService
                 $selectedLabels = [$selectedLabels];
             }
 
+            $labelCounts = [];
+            foreach ($selectedLabels as $selectedLabel) {
+                if ($selectedLabel === null || $selectedLabel === '') {
+                    continue;
+                }
+                $labelKey = (string) $selectedLabel;
+                $labelCounts[$labelKey] = ($labelCounts[$labelKey] ?? 0) + 1;
+            }
+
             $variationType = $productVariation['type'] ?? 'single';
             $isSingleChoice = $variationType === 'single';
 
             foreach ($productVariation['values'] ?? [] as $option) {
                 $label = $option['label'] ?? null;
-                if ($label === null || !in_array($label, $selectedLabels, true)) {
+                if ($label === null) {
+                    continue;
+                }
+
+                $labelKey = (string) $label;
+                $count = (int) ($labelCounts[$labelKey] ?? 0);
+                if ($count <= 0) {
                     continue;
                 }
 
                 $key = $cartVariation['name'] . '::' . $label;
                 if ($isSingleChoice || isset($presetKeys[$key])) {
-                    $includedVariationPrice += (float) ($option['optionPrice'] ?? 0);
+                    $includedVariationPrice += (float) ($option['optionPrice'] ?? 0) * $count;
                 }
             }
         }

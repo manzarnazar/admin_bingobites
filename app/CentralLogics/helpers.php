@@ -97,11 +97,32 @@ class Helpers
                 if( isset($variation['values']) && isset($product_variation['values']) && $product_variation['name'] == $variation['name']  ){
                     $result[$k] = $product_variation;
                     $result[$k]['values'] = [];
-                    foreach($product_variation['values'] as $key=> $option){
-                        if(in_array($option['label'], $variation['values']['label'])){
-                            $result[$k]['values'][] = $option;
-                            $variation_price += $option['optionPrice'];
+
+                    $selectedLabels = $variation['values']['label'] ?? [];
+                    if (!is_array($selectedLabels)) {
+                        $selectedLabels = [$selectedLabels];
+                    }
+
+                    $labelCounts = [];
+                    foreach ($selectedLabels as $selectedLabel) {
+                        if ($selectedLabel === null || $selectedLabel === '') {
+                            continue;
                         }
+                        $labelKey = (string) $selectedLabel;
+                        $labelCounts[$labelKey] = ($labelCounts[$labelKey] ?? 0) + 1;
+                    }
+
+                    foreach($product_variation['values'] as $key=> $option){
+                        $labelKey = (string) ($option['label'] ?? '');
+                        if ($labelKey === '' || !isset($labelCounts[$labelKey])) {
+                            continue;
+                        }
+
+                        $count = (int) $labelCounts[$labelKey];
+                        $optionWithQty = $option;
+                        $optionWithQty['qty'] = $count;
+                        $result[$k]['values'][] = $optionWithQty;
+                        $variation_price += (float) ($option['optionPrice'] ?? 0) * $count;
                     }
                 }
             }
@@ -1102,6 +1123,7 @@ class Helpers
 
         $normalizedIds = [];
         $normalizedQtys = [];
+        $addonQtyById = [];
 
         if (!empty($selectedAddonIds)) {
             foreach (array_values($selectedAddonIds) as $index => $addonId) {
@@ -1115,16 +1137,11 @@ class Helpers
                     continue;
                 }
 
-                if (in_array($addonId, $normalizedIds, true)) {
-                    continue;
-                }
-
                 $qtyByIndex = isset($selectedAddonQtys[$index]) ? (int) $selectedAddonQtys[$index] : null;
                 $qtyById = isset($selectedAddonQtys[(string)$addonId]) ? (int) $selectedAddonQtys[(string)$addonId] : null;
                 $qty = max(1, $qtyByIndex ?? $qtyById ?? 1);
 
-                $normalizedIds[] = $addonId;
-                $normalizedQtys[] = $qty;
+                $addonQtyById[$addonId] = ($addonQtyById[$addonId] ?? 0) + $qty;
             }
         }
 
@@ -1141,13 +1158,14 @@ class Helpers
                 }
 
                 $addonId = (int) $nameToAddonId[$normalizedLabel];
-                if (in_array($addonId, $normalizedIds, true)) {
-                    continue;
-                }
-
-                $normalizedIds[] = $addonId;
-                $normalizedQtys[] = max(1, (int) ($labelData['qty'] ?? 1));
+                $qty = max(1, (int) ($labelData['qty'] ?? 1));
+                $addonQtyById[$addonId] = max($addonQtyById[$addonId] ?? 0, $qty);
             }
+        }
+
+        foreach ($addonQtyById as $addonId => $qty) {
+            $normalizedIds[] = (int) $addonId;
+            $normalizedQtys[] = (int) $qty;
         }
 
         $normalizedPrices = [];
@@ -1395,7 +1413,10 @@ class Helpers
             if (is_array($values)) {
                 foreach ($values as $value) {
                     if (is_array($value) && isset($value['label']) && !empty($value['label'])) {
-                        $labels[] = ['label' => (string) $value['label'], 'qty' => 1];
+                        $labels[] = [
+                            'label' => (string) $value['label'],
+                            'qty' => max(1, (int) ($value['qty'] ?? 1)),
+                        ];
                     } elseif (is_string($value) && !empty($value)) {
                         $labels[] = ['label' => $value, 'qty' => 1];
                     }

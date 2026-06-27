@@ -280,9 +280,10 @@
                                                                 <strong>{{  $variation['name']}} -</strong>
                                                             </span>
                                                                 @foreach ($variation['values'] as $value)
+                                                                    @php($optionQty = max(1, (int) ($value['qty'] ?? 1)))
 
                                                                     <span class="d-block text-capitalize">
-                                                                     {{ $value['label']}} :
+                                                                     @if($optionQty > 1){{ $optionQty }} x @endif{{ $value['label']}} :
                                                                     <strong>{{Helpers::set_symbol( $value['optionPrice'])}}</strong>
                                                                 </span>
                                                                 @endforeach
