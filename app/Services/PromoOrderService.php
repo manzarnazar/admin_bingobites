@@ -239,16 +239,13 @@ class PromoOrderService
     }
 
     /**
-     * Line amount the promotion discount applies to when add-ons/modifiers are not charged.
-     * Includes base price + single-choice variations (e.g. size) + admin-preset variations.
+     * Variation price included when add-ons/modifiers are not charged.
+     * Single-choice variations (e.g. size) and admin-preset options only.
      */
-    public function computePromoDiscountableLineAmount(
-        float $basePrice,
+    public function computePromoCoreVariationPrice(
         array $productVariations,
         array $cartVariations,
-        array $presetVariations,
-        array $discountData,
-        int $quantity = 1
+        array $presetVariations
     ): float {
         $presetKeys = $this->buildPresetVariationKeys($presetVariations);
         $includedVariationPrice = 0;
@@ -283,6 +280,50 @@ class PromoOrderService
                 }
             }
         }
+
+        return $includedVariationPrice;
+    }
+
+    public function resolvePromoUnitPrice(
+        Banner $banner,
+        ?string $promotionRole,
+        array $cartLine,
+        float $basePrice,
+        float $fullVariationPrice,
+        array $productVariations
+    ): float {
+        if (!$promotionRole || $this->shouldChargeAddons($banner, $promotionRole)) {
+            return $basePrice + $fullVariationPrice;
+        }
+
+        $groupNumber = $promotionRole === 'reward' ? 2 : 1;
+        $groupItem = $this->findMatchingGroupItem($banner, $groupNumber, $cartLine);
+        $coreVariationPrice = $this->computePromoCoreVariationPrice(
+            $productVariations,
+            $cartLine['variations'] ?? [],
+            $groupItem?->variations ?? []
+        );
+
+        return $basePrice + $coreVariationPrice;
+    }
+
+    /**
+     * Line amount the promotion discount applies to when add-ons/modifiers are not charged.
+     * Includes base price + single-choice variations (e.g. size) + admin-preset variations.
+     */
+    public function computePromoDiscountableLineAmount(
+        float $basePrice,
+        array $productVariations,
+        array $cartVariations,
+        array $presetVariations,
+        array $discountData,
+        int $quantity = 1
+    ): float {
+        $includedVariationPrice = $this->computePromoCoreVariationPrice(
+            $productVariations,
+            $cartVariations,
+            $presetVariations
+        );
 
         $priceWithIncludedVariations = $basePrice + $includedVariationPrice;
         $discountedPerUnit = max(

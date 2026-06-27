@@ -187,6 +187,25 @@ trait CalculateOrderDataTrait
                 ];
             }
 
+            if ($isPromoLine && !$promoService->shouldChargeAddons($banner, $promotionRole)) {
+                $basePrice = $branchProduct
+                    ? (float) $branchProduct['price']
+                    : (float) $product->price;
+                $orderProductVariations = $branchProduct
+                    ? Helpers::resolveOrderProductVariations($product, $branchProduct)
+                    : Helpers::resolveOrderProductVariations($product, null);
+                $fullVariationPrice = max(0, $price - $basePrice);
+
+                $price = $promoService->resolvePromoUnitPrice(
+                    $banner,
+                    $promotionRole,
+                    $cartItem,
+                    $basePrice,
+                    $fullVariationPrice,
+                    $orderProductVariations
+                );
+            }
+
             $discountOnProduct = Helpers::discount_calculate($discountData, $price);
 
             $normalizedAddons = Helpers::normalize_order_addons(
