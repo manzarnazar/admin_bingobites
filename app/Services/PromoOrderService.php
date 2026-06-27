@@ -225,6 +225,96 @@ class PromoOrderService
         return true;
     }
 
+    public function findMatchingGroupItem(Banner $banner, int $groupNumber, array $cartLine): ?BannerGroupItem
+    {
+        $productId = (int) ($cartLine['product_id'] ?? 0);
+        $variations = $cartLine['variations'] ?? [];
+
+        return $banner->groupItems
+            ->where('group_number', $groupNumber)
+            ->first(function (BannerGroupItem $item) use ($productId, $variations) {
+                return (int) $item->product_id === $productId
+                    && $this->variationsMatch($item->variations ?? [], $variations);
+            });
+    }
+
+    /**
+     * Line amount the promotion discount applies to when add-ons/modifiers are not charged.
+     * Includes base price + single-choice variations (e.g. size) + admin-preset variations.
+     */
+    public function computePromoDiscountableLineAmount(
+        float $basePrice,
+        array $productVariations,
+        array $cartVariations,
+        array $presetVariations,
+        array $discountData,
+        int $quantity = 1
+    ): float {
+        $presetKeys = $this->buildPresetVariationKeys($presetVariations);
+        $includedVariationPrice = 0;
+
+        foreach ($cartVariations as $cartVariation) {
+            if (!is_array($cartVariation) || empty($cartVariation['name'])) {
+                continue;
+            }
+
+            $productVariation = collect($productVariations)->firstWhere('name', $cartVariation['name']);
+            if (!$productVariation) {
+                continue;
+            }
+
+            $selectedLabels = $cartVariation['values']['label'] ?? [];
+            if (!is_array($selectedLabels)) {
+                $selectedLabels = [$selectedLabels];
+            }
+
+            $variationType = $productVariation['type'] ?? 'single';
+            $isSingleChoice = $variationType === 'single';
+
+            foreach ($productVariation['values'] ?? [] as $option) {
+                $label = $option['label'] ?? null;
+                if ($label === null || !in_array($label, $selectedLabels, true)) {
+                    continue;
+                }
+
+                $key = $cartVariation['name'] . '::' . $label;
+                if ($isSingleChoice || isset($presetKeys[$key])) {
+                    $includedVariationPrice += (float) ($option['optionPrice'] ?? 0);
+                }
+            }
+        }
+
+        $priceWithIncludedVariations = $basePrice + $includedVariationPrice;
+        $discountedPerUnit = max(
+            0,
+            $priceWithIncludedVariations - Helpers::discount_calculate($discountData, $priceWithIncludedVariations)
+        );
+
+        return $discountedPerUnit * $quantity;
+    }
+
+    private function buildPresetVariationKeys(array $presetVariations): array
+    {
+        $keys = [];
+
+        foreach ($presetVariations as $variation) {
+            if (!is_array($variation) || empty($variation['name'])) {
+                continue;
+            }
+
+            $labels = $variation['values']['label'] ?? [];
+            if (!is_array($labels)) {
+                $labels = [$labels];
+            }
+
+            foreach ($labels as $label) {
+                $keys[$variation['name'] . '::' . (string) $label] = true;
+            }
+        }
+
+        return $keys;
+    }
+
     public function recordUsage(Banner $banner, int|string|null $userId, int $isGuest, int|string $orderId): void
     {
         PromotionUsage::create([

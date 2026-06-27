@@ -217,8 +217,20 @@ trait CalculateOrderDataTrait
                     $basePrice = $branchProduct
                         ? (float) $branchProduct['price']
                         : (float) $product->price;
-                    $rewardLineAmount = (max(0, $basePrice - Helpers::discount_calculate($discountData, $basePrice)))
-                        * $cartItem['quantity'];
+                    $orderProductVariations = $branchProduct
+                        ? Helpers::resolveOrderProductVariations($product, $branchProduct)
+                        : Helpers::resolveOrderProductVariations($product, null);
+                    $groupItem = $promoService->findMatchingGroupItem($banner, 2, $cartItem);
+                    $presetVariations = $groupItem?->variations ?? [];
+
+                    $rewardLineAmount = $promoService->computePromoDiscountableLineAmount(
+                        $basePrice,
+                        $orderProductVariations,
+                        $cartItem['variations'] ?? [],
+                        $presetVariations,
+                        $discountData,
+                        (int) $cartItem['quantity']
+                    );
                 }
 
                 $linePromoDiscount = $promoService->calculateRewardDiscount(
