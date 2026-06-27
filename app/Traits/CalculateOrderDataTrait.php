@@ -147,10 +147,7 @@ trait CalculateOrderDataTrait
             $pricedVariationLabels = [];
 
             if ($branchProduct) {
-                $branchProductVariations = $branchProduct->variations ?? [];
-                if (!is_array($branchProductVariations)) {
-                    $branchProductVariations = json_decode($branchProductVariations ?? '[]', true) ?: [];
-                }
+                $branchProductVariations = Helpers::resolveOrderProductVariations($product, $branchProduct);
                 $variations = [];
 
                 if (count($branchProductVariations)) {
@@ -166,8 +163,7 @@ trait CalculateOrderDataTrait
                     'discount' => $branchProduct['discount'],
                 ];
             } else {
-                $productVariations = json_decode($product->variations, true) ?: [];
-                $productVariations = is_array($productVariations) ? $productVariations : [];
+                $productVariations = Helpers::resolveOrderProductVariations($product, null);
                 $variations = [];
 
                 if (count($productVariations)) {
@@ -216,6 +212,15 @@ trait CalculateOrderDataTrait
 
             if ($isPromoLine && $promotionRole === 'reward') {
                 $rewardLineAmount = (($price - $discountOnProduct) * $cartItem['quantity']) + $addonPrice;
+
+                if (!$promoService->shouldChargeAddons($banner, $promotionRole)) {
+                    $basePrice = $branchProduct
+                        ? (float) $branchProduct['price']
+                        : (float) $product->price;
+                    $rewardLineAmount = (max(0, $basePrice - Helpers::discount_calculate($discountData, $basePrice)))
+                        * $cartItem['quantity'];
+                }
+
                 $linePromoDiscount = $promoService->calculateRewardDiscount(
                     $banner,
                     $rewardLineAmount,

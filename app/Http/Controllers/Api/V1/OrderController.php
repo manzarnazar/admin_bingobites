@@ -317,19 +317,34 @@ class OrderController extends Controller
             $promotionBanner = $amountData['promotion_banner'] ?? null;
 
             foreach ($request['cart'] as $c) {
-                $product = $this->product->find($c['product_id']);
+                $product = Product::with([
+                    'modifierTemplates' => function ($query) {
+                        $query->where('modifier_templates.is_active', 1)
+                            ->wherePivot('is_active', 1)
+                            ->orderBy('product_modifier_template.sort_order');
+                    },
+                    'modifierTemplates.items' => function ($query) {
+                        $query->where('is_active', 1)->orderBy('sort_order');
+                    },
+                    'modifierTemplates.items.addon',
+                ])->find($c['product_id']);
                 $branchProduct = $this->product_by_branch->where(['product_id' => $c['product_id'], 'branch_id' => $request['branch_id']])->first();
 
                 $discountData = [];
                 $product->halal_status = $branchProduct?->halal_status ?? 0;
+                $pricedVariationLabels = [];
+                $promotionRole = $c['promotion_role'] ?? null;
+                $isPromoLine = $promotionBanner
+                    && (int) ($c['promotion_id'] ?? 0) === (int) $promotionBanner->id;
 
                 if ($branchProduct) {
-                    $branchProductVariations = $branchProduct->variations;
+                    $branchProductVariations = Helpers::resolveOrderProductVariations($product, $branchProduct);
                     $variations = [];
                     if (count($branchProductVariations)) {
                         $variation_data = Helpers::get_varient($branchProductVariations, $c['variations']);
                         $price = $branchProduct['price'] + $variation_data['price'];
                         $variations = $variation_data['variations'];
+                        $pricedVariationLabels = Helpers::extract_priced_variation_option_labels($variation_data['variations'] ?? []);
                     } else {
                         $price = $branchProduct['price'];
                     }
@@ -338,18 +353,26 @@ class OrderController extends Controller
                         'discount' => $branchProduct['discount'],
                     ];
                 } else {
-                    $productVariations = json_decode($product->variations, true);
+                    $productVariations = Helpers::resolveOrderProductVariations($product, null);
                     $variations = [];
                     if (count($productVariations)) {
                         $variation_data = Helpers::get_varient($productVariations, $c['variations']);
                         $price = $product['price'] + $variation_data['price'];
                         $variations = $variation_data['variations'];
+                        $pricedVariationLabels = Helpers::extract_priced_variation_option_labels($variation_data['variations'] ?? []);
                     } else {
                         $price = $product['price'];
                     }
                     $discountData = [
                         'discount_type' => $product['discount_type'],
                         'discount' => $product['discount'],
+                    ];
+                }
+
+                if ($isPromoLine && $promotionRole === 'reward') {
+                    $discountData = [
+                        'discount_type' => 'amount',
+                        'discount' => 0,
                     ];
                 }
 
@@ -360,21 +383,25 @@ class OrderController extends Controller
                     selectedVariations: $c['variations'] ?? [],
                     selectedAddonIds: $c['add_on_ids'] ?? [],
                     selectedAddonQtys: $c['add_on_qtys'] ?? [],
+                    excludeAddonLabels: $pricedVariationLabels,
                 );
 
-                $promotionRole = $c['promotion_role'] ?? null;
-                $isPromoLine = $promotionBanner
-                    && (int) ($c['promotion_id'] ?? 0) === (int) $promotionBanner->id;
                 $addonPrice = (float) ($normalizedAddons['total_add_on_price'] ?? 0);
 
                 if ($isPromoLine && !$promoService->shouldChargeAddons($promotionBanner, $promotionRole)) {
-                    $normalizedAddons['add_on_ids'] = [];
-                    $normalizedAddons['add_on_qtys'] = [];
-                    $normalizedAddons['add_on_prices'] = [];
-                    $normalizedAddons['add_on_taxes'] = [];
+                    $addonPrice = 0;
                     $normalizedAddons['add_on_tax_amount'] = 0;
                     $normalizedAddons['total_add_on_price'] = 0;
-                    $addonPrice = 0;
+                    $normalizedAddons['add_on_prices'] = array_fill(
+                        0,
+                        count($normalizedAddons['add_on_ids'] ?? []),
+                        0
+                    );
+                    $normalizedAddons['add_on_taxes'] = array_fill(
+                        0,
+                        count($normalizedAddons['add_on_ids'] ?? []),
+                        0
+                    );
                 }
 
                 if ($isPromoLine && $promotionRole === 'reward') {
@@ -383,6 +410,15 @@ class OrderController extends Controller
                     }
 
                     $rewardLineAmount = (($price - $discountOnProduct) * $c['quantity']) + $addonPrice;
+
+                    if (!$promoService->shouldChargeAddons($promotionBanner, $promotionRole)) {
+                        $basePrice = $branchProduct
+                            ? (float) $branchProduct['price']
+                            : (float) $product->price;
+                        $rewardLineAmount = (max(0, $basePrice - Helpers::discount_calculate($discountData, $basePrice)))
+                            * $c['quantity'];
+                    }
+
                     $linePromoDiscount = $promoService->calculateRewardDiscount(
                         $promotionBanner,
                         $rewardLineAmount,

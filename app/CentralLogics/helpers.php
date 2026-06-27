@@ -110,6 +110,31 @@ class Helpers
         return ['price'=>$variation_price,'variations'=>$result];
     }
 
+    /**
+     * Product + branch variations used for order pricing, including modifier templates
+     * exposed as variation groups in the customer API.
+     */
+    public static function resolveOrderProductVariations(Product $product, $branchProduct = null): array
+    {
+        $templateVariations = $product->modifierTemplatesAsVariations();
+
+        if ($branchProduct) {
+            $variations = $branchProduct->variations ?? [];
+            if (!is_array($variations)) {
+                $variations = json_decode($variations ?? '[]', true) ?: [];
+            }
+        } else {
+            $variations = json_decode($product->variations ?? '[]', true) ?: [];
+            $variations = is_array($variations) ? $variations : [];
+        }
+
+        if (count($templateVariations) === 0) {
+            return $variations;
+        }
+
+        return array_merge($variations, $templateVariations);
+    }
+
     public static function product_data_formatting($data, $multi_data = false)
     {
         $storage = [];
