@@ -49,9 +49,36 @@
         });
     }
 
+    function getSelectValue(id, fallback) {
+        if (typeof window.jQuery !== "undefined") {
+            const value = window.jQuery("#" + id).val();
+            if (value != null && value !== "") {
+                return value;
+            }
+        }
+
+        const select = document.getElementById(id);
+        return select && select.value ? select.value : fallback;
+    }
+
+    function bindSelect2Handlers() {
+        if (typeof window.jQuery === "undefined") {
+            return;
+        }
+
+        window
+            .jQuery("#promotion-type-select")
+            .off("change.promoBanner select2:select.promoBanner")
+            .on("change.promoBanner select2:select.promoBanner", updatePromotionTypeFields);
+
+        window
+            .jQuery("#order-type-mode")
+            .off("change.promoBanner select2:select.promoBanner")
+            .on("change.promoBanner select2:select.promoBanner", toggleOrderTypeOptions);
+    }
+
     function getPromotionType() {
-        const select = $("#promotion-type-select");
-        return select ? select.value : "bogo";
+        return getSelectValue("promotion-type-select", "bogo");
     }
 
     function updatePromotionTypeFields() {
@@ -63,22 +90,28 @@
 
         if (type === "bogo") {
             rewardInput.value = "100";
-            rewardInput.readOnly = true;
+            rewardInput.setAttribute("readonly", "readonly");
             label.textContent = "Reward Discount (%)";
         } else if (type === "percent_off") {
-            rewardInput.readOnly = false;
+            rewardInput.removeAttribute("readonly");
             label.textContent = "Reward Discount (%)";
         } else {
-            rewardInput.readOnly = false;
+            rewardInput.removeAttribute("readonly");
             label.textContent = "Fixed Discount Amount";
         }
     }
 
     function toggleOrderTypeOptions() {
-        const select = $("#order-type-mode");
+        const mode = getSelectValue("order-type-mode", "any");
         const options = $("#order-type-options");
-        if (options && select) {
-            options.style.display = select.value === "custom" ? "" : "none";
+        if (!options) return;
+
+        if (mode === "custom") {
+            options.style.display = "";
+            options.classList.remove("d-none");
+        } else {
+            options.style.display = "none";
+            options.classList.add("d-none");
         }
     }
 
@@ -346,6 +379,7 @@
 
     document.addEventListener("DOMContentLoaded", function () {
         initSelect2();
+        bindSelect2Handlers();
         updatePromotionTypeFields();
         toggleOrderTypeOptions();
 
@@ -353,20 +387,6 @@
             input.addEventListener("change", function () {
                 readImagePreview(input);
             });
-        });
-
-        const promotionTypeSelect = $("#promotion-type-select");
-        if (promotionTypeSelect) {
-            promotionTypeSelect.addEventListener("change", updatePromotionTypeFields);
-        }
-
-        const orderTypeSelect = $("#order-type-mode");
-        if (orderTypeSelect) {
-            orderTypeSelect.addEventListener("change", toggleOrderTypeOptions);
-        }
-
-        $all(".order-type-mode").forEach(function (input) {
-            input.addEventListener("change", toggleOrderTypeOptions);
         });
 
         $all(".open-product-picker").forEach(function (button) {

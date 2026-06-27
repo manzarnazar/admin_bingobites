@@ -154,7 +154,7 @@
                     </select>
                 </div>
             </div>
-            <div class="col-md-6 col-lg-8" id="order-type-options" style="{{ $orderTypeMode === 'custom' ? '' : 'display:none' }}">
+            <div class="col-md-6 col-lg-8" id="order-type-options" @class(['d-none' => $orderTypeMode !== 'custom'])>
                 <label class="input-label d-block">{{ translate('Allowed order types') }}</label>
                 <div class="d-flex flex-wrap gap-3 pt-1">
                     <div class="custom-control custom-checkbox">
