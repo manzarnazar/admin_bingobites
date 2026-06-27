@@ -213,6 +213,15 @@
             <label class="custom-control-label" for="once-per-customer">{{ translate('Only once per client') }}</label>
         </div>
         <div class="form-group">
+            <label class="input-label">{{ translate('Customer eligibility') }}</label>
+            @php $customerEligibility = old('customer_eligibility', $banner?->customer_eligibility ?? 'any'); @endphp
+            <select name="customer_eligibility" class="custom-select">
+                <option value="any" {{ $customerEligibility === 'any' ? 'selected' : '' }}>{{ translate('Any customer') }}</option>
+                <option value="new" {{ $customerEligibility === 'new' ? 'selected' : '' }}>{{ translate('New customers only') }}</option>
+                <option value="returned" {{ $customerEligibility === 'returned' ? 'selected' : '' }}>{{ translate('Returning customers only') }}</option>
+            </select>
+        </div>
+        <div class="form-group">
             <label class="input-label">{{ translate('Maximum reward quantity') }}</label>
             <input type="number" min="1" name="max_reward_qty" class="form-control" value="{{ old('max_reward_qty', $banner?->max_reward_qty ?? 1) }}" required>
         </div>

@@ -61,6 +61,7 @@ class BannerPromoService
             'payment_methods' => 'nullable|array',
             'payment_methods.*' => 'string',
             'once_per_customer' => 'nullable|boolean',
+            'customer_eligibility' => 'nullable|in:any,new,returned',
             'max_reward_qty' => 'required|integer|min:1',
             'usage_per_customer' => 'nullable|integer|min:1',
             'total_usage_limit' => 'nullable|integer|min:1',
@@ -94,6 +95,7 @@ class BannerPromoService
             ? array_values($request->input('payment_methods', []))
             : null;
         $banner->once_per_customer = $request->boolean('once_per_customer');
+        $banner->customer_eligibility = $request->input('customer_eligibility', 'any');
         $banner->max_reward_qty = (int) $request->max_reward_qty;
         $banner->usage_per_customer = $request->filled('usage_per_customer')
             ? (int) $request->usage_per_customer

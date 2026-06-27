@@ -5,6 +5,7 @@ namespace App\Services;
 use App\CentralLogics\Helpers;
 use App\Model\Banner;
 use App\Model\BannerGroupItem;
+use App\Model\Order;
 use App\Model\PromotionUsage;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Schema;
@@ -64,6 +65,8 @@ class PromoOrderService
             ]);
         }
 
+        $this->validateCustomerEligibility($banner, $userId, $isGuest);
+
         $promoLines = collect($cart)->filter(
             fn ($line) => (int) ($line['promotion_id'] ?? 0) === (int) $banner->id
         );
@@ -95,6 +98,31 @@ class PromoOrderService
         if (!$this->lineMatchesGroupItem($banner, 2, $rewardLine)) {
             throw ValidationException::withMessages([
                 'promotion_id' => [translate('Selected reward item is not eligible for this promotion')],
+            ]);
+        }
+    }
+
+    public function validateCustomerEligibility(Banner $banner, int|string|null $userId, int $isGuest): void
+    {
+        $eligibility = $banner->customer_eligibility ?? 'any';
+        if ($eligibility === 'any' || !$userId) {
+            return;
+        }
+
+        $hasPriorOrders = Order::query()
+            ->where('user_id', $userId)
+            ->where('is_guest', $isGuest)
+            ->exists();
+
+        if ($eligibility === 'new' && $hasPriorOrders) {
+            throw ValidationException::withMessages([
+                'promotion_id' => [translate('This promotion is only available for new customers')],
+            ]);
+        }
+
+        if ($eligibility === 'returned' && !$hasPriorOrders) {
+            throw ValidationException::withMessages([
+                'promotion_id' => [translate('This promotion is only available for returning customers')],
             ]);
         }
     }
@@ -268,6 +296,7 @@ class PromoOrderService
             'order_types' => $banner->order_types,
             'payment_methods' => $banner->payment_methods,
             'once_per_customer' => $banner->once_per_customer,
+            'customer_eligibility' => $banner->customer_eligibility ?? 'any',
             'max_reward_qty' => $banner->max_reward_qty,
             'start_date' => $banner->start_date?->toIso8601String(),
             'end_date' => $banner->end_date?->toIso8601String(),
