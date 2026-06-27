@@ -74,6 +74,7 @@
   'reviews' => 'Reviews',
   'promotion' => 'Promotion',
   'banner' => 'Banner',
+  'self_made_promo' => 'Self Made Promo',
   'coupon' => 'Coupon',
   'send' => 'Send',
   'notification' => 'Notification',
