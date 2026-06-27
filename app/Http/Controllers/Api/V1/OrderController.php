@@ -18,6 +18,7 @@ use App\Models\GuestUser;
 use App\Models\OfflinePayment;
 use App\Models\OrderPartialPayment;
 use App\Models\OrderArea;
+use App\Services\PromoOrderService;
 use App\Traits\CalculateOrderDataTrait;
 use App\User;
 use Carbon\Carbon;
@@ -136,6 +137,8 @@ class OrderController extends Controller
                 isGuest: $isGuest,
                 deliveryChargeInfo: $deliveryChargeInfo,
                 couponCode: $request->input('coupon_code'),
+                promotionId: $request->filled('promotion_id') ? (int) $request->input('promotion_id') : null,
+                paymentMethod: $request->input('payment_method'),
             );
         } catch (ValidationException $e) {
             return response()->json(['errors' => $e->errors()], 403);
@@ -154,6 +157,7 @@ class OrderController extends Controller
             'total_product_price' => Helpers::set_price($amountData['total_product_price']),
             'total_addon_price' => Helpers::set_price($amountData['total_addon_price']),
             'product_discount' => Helpers::set_price($amountData['total_discount_on_product']),
+            'promotion_discount_amount' => Helpers::set_price($amountData['promotion_discount_amount'] ?? 0),
             'tax_amount' => Helpers::set_price($amountData['total_product_and_addon_tax_amount']),
             'referral_discount_amount' => Helpers::set_price($amountData['referral_discount_amount']),
             'coupon_discount_amount' => Helpers::set_price($amountData['coupon_discount_amount']),
@@ -216,6 +220,8 @@ class OrderController extends Controller
                 isGuest : $userType,
                 deliveryChargeInfo: $deliveryChargeInfo,
                 couponCode: $request['coupon_code'] ?? null,
+                promotionId: $request->filled('promotion_id') ? (int) $request['promotion_id'] : null,
+                paymentMethod: $request['payment_method'] ?? null,
             );
 
         }  catch (ValidationException $e) {
@@ -299,6 +305,8 @@ class OrderController extends Controller
                 'bring_change_amount' => $request->payment_method != 'cash_on_delivery' ? 0 : ($request->bring_change_amount != null ? $request->bring_change_amount : 0),
                 'total_tax_amount' => $amountData['total_product_and_addon_tax_amount'],
                 'referral_discount' => $amountData['referral_discount_amount'],
+                'promotion_id' => $request->filled('promotion_id') ? (int) $request['promotion_id'] : null,
+                'promotion_discount_amount' => Helpers::set_price($amountData['promotion_discount_amount'] ?? 0),
                 'created_at' => now(),
                 'updated_at' => now()
             ];
@@ -438,6 +446,15 @@ class OrderController extends Controller
                         $this->sendNotificationToReferralUser(referredUser: $referUser);
                     }
                 }
+            }
+
+            if (!empty($amountData['promotion_banner'])) {
+                app(PromoOrderService::class)->recordUsage(
+                    banner: $amountData['promotion_banner'],
+                    userId: $userId,
+                    isGuest: $userType,
+                    orderId: $orderId,
+                );
             }
 
             DB::commit();

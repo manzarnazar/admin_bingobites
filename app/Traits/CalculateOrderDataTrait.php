@@ -9,14 +9,24 @@ use App\Model\Product;
 use App\Model\ProductByBranch;
 use App\Model\WalletTransaction;
 use App\Models\OrderPartialPayment;
+use App\Services\PromoOrderService;
 use App\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use function App\CentralLogics\translate;
 
 trait CalculateOrderDataTrait
 {
-    protected function calculateOrderAmount(array $cart, int|string $userId, int $isGuest, array $deliveryChargeInfo = [],  ?string $couponCode = null): array|JsonResponse
+    protected function calculateOrderAmount(
+        array $cart,
+        int|string $userId,
+        int $isGuest,
+        array $deliveryChargeInfo = [],
+        ?string $couponCode = null,
+        ?int $promotionId = null,
+        ?string $paymentMethod = null,
+    ): array|JsonResponse
     {
         if (empty($cart)) {
             return [
@@ -28,8 +38,31 @@ trait CalculateOrderDataTrait
                 'total_discount_on_product' => 0,
                 'total_addon_price' => 0,
                 'referral_discount_amount' => 0,
-                'coupon_code' => null
+                'coupon_code' => null,
+                'promotion_discount_amount' => 0,
             ];
+        }
+
+        $promoService = app(PromoOrderService::class);
+        $banner = null;
+        $promotionDiscountAmount = 0;
+
+        if ($promotionId) {
+            $banner = $promoService->findActiveBanner($promotionId);
+            if (!$banner) {
+                throw ValidationException::withMessages([
+                    'promotion_id' => [translate('Promotion is not available')],
+                ]);
+            }
+
+            $promoService->validatePromotion(
+                banner: $banner,
+                cart: $cart,
+                userId: $userId,
+                isGuest: $isGuest,
+                orderType: $deliveryChargeInfo['order_type'] ?? 'take_away',
+                paymentMethod: $paymentMethod,
+            );
         }
 
         $totalOrderedAmount = 0;
@@ -44,6 +77,9 @@ trait CalculateOrderDataTrait
         $appliedCouponCode = null;
 
         foreach ($cart as $cartItem) {
+            $promotionRole = $cartItem['promotion_role'] ?? null;
+            $isPromoLine = $banner && (int) ($cartItem['promotion_id'] ?? 0) === (int) $banner->id;
+
             $product = Product::with([
                 'modifierTemplates' => function ($query) {
                     $query->where('modifier_templates.is_active', 1)
@@ -116,15 +152,22 @@ trait CalculateOrderDataTrait
 
                 if (count($productVariations)) {
                     $variationData = Helpers::get_varient($productVariations, $cartItem['variations']);
-                    $price = $product['price'] + $variationData['price'];
+                    $price = $product->price + $variationData['price'];
                     $variations = $variationData['variations'];
                     $pricedVariationLabels = Helpers::extract_priced_variation_option_labels($variationData['variations'] ?? []);
                 } else {
-                    $price = $product['price'];
+                    $price = $product->price;
                 }
                 $discountData = [
-                    'discount_type' => $product['discount_type'],
-                    'discount' => $product['discount'],
+                    'discount_type' => $product->discount_type,
+                    'discount' => $product->discount,
+                ];
+            }
+
+            if ($isPromoLine && $promotionRole === 'reward') {
+                $discountData = [
+                    'discount_type' => 'amount',
+                    'discount' => 0,
                 ];
             }
 
@@ -140,11 +183,28 @@ trait CalculateOrderDataTrait
             $addonTaxForThisItem = (float) $normalizedAddons['add_on_tax_amount'];
             $addonPrice = (float) $normalizedAddons['total_add_on_price'];
 
-            $productTaxAmount =  Helpers::new_tax_calculate($product, $price, $discountData);
+            if ($isPromoLine && !$promoService->shouldChargeAddons($banner, $promotionRole)) {
+                $addonPrice = 0;
+                $addonTaxForThisItem = 0;
+            }
+
+            $productTaxAmount = Helpers::new_tax_calculate($product, $price, $discountData);
 
             $totalProductTaxAmount += $productTaxAmount * $cartItem['quantity'];
             $totalProductPrice += $price * $cartItem['quantity'];
-            $totalDiscountOnProduct += $discountOnProduct * $cartItem['quantity'];;
+            $totalDiscountOnProduct += $discountOnProduct * $cartItem['quantity'];
+
+            if ($isPromoLine && $promotionRole === 'reward') {
+                $rewardLineAmount = (($price - $discountOnProduct) * $cartItem['quantity']) + $addonPrice;
+                $linePromoDiscount = $promoService->calculateRewardDiscount(
+                    $banner,
+                    $rewardLineAmount,
+                    $banner->groupItems->where('group_number', 2)
+                );
+                $promotionDiscountAmount += $linePromoDiscount;
+                $totalDiscountOnProduct += $linePromoDiscount;
+            }
+
             $totalAddonPrice += $addonPrice;
             $totalAddonTax += $addonTaxForThisItem;
 
@@ -206,7 +266,9 @@ trait CalculateOrderDataTrait
             'total_discount_on_product' => $totalDiscountOnProduct,
             'total_addon_price' => $totalAddonPrice,
             'referral_discount_amount' => $referralDiscountAmount,
-            'coupon_code' => $appliedCouponCode
+            'coupon_code' => $appliedCouponCode,
+            'promotion_discount_amount' => $promotionDiscountAmount,
+            'promotion_banner' => $banner,
         ];
     }
 

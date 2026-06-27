@@ -5,107 +5,74 @@ namespace App\Http\Controllers\Admin;
 use App\CentralLogics\Helpers;
 use App\Http\Controllers\Controller;
 use App\Model\Banner;
-use App\Model\Category;
 use App\Model\Product;
+use App\Services\BannerPromoService;
 use Brian2694\Toastr\Facades\Toastr;
 use Illuminate\Contracts\Support\Renderable;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 
 class BannerController extends Controller
 {
     public function __construct(
-        private Banner   $banner,
-        private Product  $product,
-        private Category $category
-    )
-    {}
+        private Banner $banner,
+        private Product $product,
+        private BannerPromoService $bannerPromoService,
+    ) {}
 
-    /**
-     * @return Renderable
-     */
-    function index(): Renderable
+    public function index(): Renderable
     {
-        $products = $this->product->orderBy('name')->get();
-        $categories = $this->category->where(['parent_id' => 0])->orderBy('name')->get();
-
-        return view('admin-views.banner.index', compact('products', 'categories'));
+        return $this->list(request());
     }
 
-    /**
-     * @param Request $request
-     * @return Renderable
-     */
-    function list(Request $request): Renderable
+    public function list(Request $request): Renderable
     {
         $search = $request->search;
-        $queryParam = ['search' => $search];
+        $products = $this->product->orderBy('name')->get(['id', 'name']);
+        $paymentMethods = $this->paymentMethodOptions();
 
         $banners = $this->banner
-            ->when($search, function ($query) use ($search, $queryParam) {
+            ->when($search, function ($query) use ($search) {
                 $keywords = explode(' ', $search);
                 foreach ($keywords as $keyword) {
-                    $query->orWhere('title', 'LIKE', "%$keyword%")
-                        ->orwhere('id', 'LIKE', "%$keyword%");
+                    $query->where(function ($inner) use ($keyword) {
+                        $inner->where('title', 'LIKE', "%$keyword%")
+                            ->orWhere('headline', 'LIKE', "%$keyword%")
+                            ->orWhere('id', 'LIKE', "%$keyword%");
+                    });
                 }
             })
             ->latest()
             ->paginate(Helpers::getPagination())
-            ->appends($queryParam);
+            ->appends(['search' => $search]);
 
-        return view('admin-views.banner.list', compact('banners', 'search'));
+        return view('admin-views.banner.list', compact('banners', 'search', 'products', 'paymentMethods'));
     }
 
-    /**
-     * @param Request $request
-     * @return RedirectResponse
-     */
     public function store(Request $request): RedirectResponse
     {
-        $request->validate([
-            'title' => 'required|max:255',
-            'image' => 'required',
-            'item_type' => 'required'
-        ], [
-            'title.max' => translate('Title is too long'),
-        ]);
+        $request->validate(['image' => 'required']);
 
-        $banner = $this->banner;
-        $banner->title = $request->title;
-
-        if ($request['item_type'] == 'product') {
-            $banner->product_id = $request->product_id;
-        } elseif ($request['item_type'] == 'category') {
-            $banner->category_id = $request->category_id;
-        }
-
-        $banner->image = Helpers::upload('banner/', 'png', $request->file('image'));
-        $banner->save();
+        $image = Helpers::upload('banner/', 'png', $request->file('image'));
+        $this->bannerPromoService->store($request, $image);
 
         Toastr::success(translate('Banner added successfully!'));
         return redirect('admin/banner/list');
     }
 
-    /**
-     * @param $id
-     * @return Renderable
-     */
     public function edit($id): Renderable
     {
-        $products = $this->product->orderBy('name')->get();
-        $banner = $this->banner->find($id);
-        $categories = $this->category->where(['parent_id' => 0])->orderBy('name')->get();
+        $banner = $this->banner->with('groupItems.product')->findOrFail($id);
+        $products = $this->product->orderBy('name')->get(['id', 'name']);
+        $paymentMethods = $this->paymentMethodOptions();
 
-        return view('admin-views.banner.edit', compact('banner', 'products', 'categories'));
+        return view('admin-views.banner.edit', compact('banner', 'products', 'paymentMethods'));
     }
 
-    /**
-     * @param Request $request
-     * @return RedirectResponse
-     */
     public function status(Request $request): RedirectResponse
     {
-        $banner = $this->banner->find($request->id);
+        $banner = $this->banner->findOrFail($request->id);
         $banner->status = $request->status;
         $banner->save();
 
@@ -113,49 +80,50 @@ class BannerController extends Controller
         return back();
     }
 
-    /**
-     * @param Request $request
-     * @param $id
-     * @return RedirectResponse
-     */
     public function update(Request $request, $id): RedirectResponse
     {
-        $request->validate([
-            'title' => 'required|max:255',
-            'item_type' => 'required'
-        ], [
-            'title.max' => translate('Title is too long!'),
-        ]);
+        $banner = $this->banner->findOrFail($id);
+        $image = $request->hasFile('image')
+            ? Helpers::update('banner/', $banner->image, 'png', $request->file('image'))
+            : null;
 
-        $banner = $this->banner->find($id);
-        $banner->title = $request->title;
-
-        if ($request['item_type'] == 'product') {
-            $banner->product_id = $request->product_id;
-            $banner->category_id = null;
-        } elseif ($request['item_type'] == 'category') {
-            $banner->product_id = null;
-            $banner->category_id = $request->category_id;
-        }
-
-        $banner->image = $request->has('image') ? Helpers::update('banner/', $banner->image, 'png', $request->file('image')) : $banner->image;
-        $banner->save();
+        $this->bannerPromoService->update($banner, $request, $image);
 
         Toastr::success(translate('Banner updated successfully!'));
         return redirect('admin/banner/list');
     }
 
-    /**
-     * @param Request $request
-     * @return RedirectResponse
-     */
     public function delete(Request $request): RedirectResponse
     {
-        $banner = $this->banner->find($request->id);
-        Helpers::delete('banner/' . $banner['image']);
+        $banner = $this->banner->findOrFail($request->id);
+        if ($banner->image) {
+            Helpers::delete('banner/' . $banner->image);
+        }
         $banner->delete();
 
         Toastr::success(translate('Banner removed!'));
         return back();
+    }
+
+    public function productVariations(int $productId): JsonResponse
+    {
+        $product = $this->product->findOrFail($productId);
+        $variations = json_decode($product->variations ?? '[]', true) ?: [];
+
+        return response()->json([
+            'product_id' => $product->id,
+            'product_name' => $product->name,
+            'variations' => $variations,
+        ]);
+    }
+
+    private function paymentMethodOptions(): array
+    {
+        return [
+            'cash_on_delivery' => translate('cash_on_delivery'),
+            'wallet_payment' => translate('wallet_payment'),
+            'digital_payment' => translate('digital_payment'),
+            'offline_payment' => translate('offline_payment'),
+        ];
     }
 }

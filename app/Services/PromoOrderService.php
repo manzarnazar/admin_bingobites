@@ -1,0 +1,271 @@
+<?php
+
+namespace App\Services;
+
+use App\CentralLogics\Helpers;
+use App\Model\Banner;
+use App\Model\BannerGroupItem;
+use App\Model\PromotionUsage;
+use Illuminate\Support\Collection;
+use Illuminate\Validation\ValidationException;
+
+class PromoOrderService
+{
+    public function findActiveBanner(int $promotionId): ?Banner
+    {
+        return Banner::with('groupItems')
+            ->active()
+            ->currentlyValid()
+            ->find($promotionId);
+    }
+
+    public function validatePromotion(
+        Banner $banner,
+        array $cart,
+        int|string|null $userId,
+        int $isGuest,
+        string $orderType,
+        ?string $paymentMethod = null,
+    ): void {
+        if (!$banner->isOrderTypeAllowed($orderType)) {
+            throw ValidationException::withMessages([
+                'promotion_id' => [translate('Promotion is not available for this order type')],
+            ]);
+        }
+
+        if ($paymentMethod !== null && !$banner->isPaymentMethodAllowed($paymentMethod)) {
+            throw ValidationException::withMessages([
+                'promotion_id' => [translate('Promotion is not available for this payment method')],
+            ]);
+        }
+
+        $usageQuery = PromotionUsage::query()->where('banner_id', $banner->id);
+        if ($isGuest === 0 && $userId) {
+            $usageQuery->where('user_id', $userId);
+        } elseif ($userId) {
+            $usageQuery->where('guest_id', $userId);
+        }
+
+        $customerUsageCount = (clone $usageQuery)->count();
+
+        if ($banner->once_per_customer && $customerUsageCount > 0) {
+            throw ValidationException::withMessages([
+                'promotion_id' => [translate('Promotion can only be used once per customer')],
+            ]);
+        }
+
+        if ($banner->usage_per_customer && $customerUsageCount >= $banner->usage_per_customer) {
+            throw ValidationException::withMessages([
+                'promotion_id' => [translate('Promotion usage limit reached for this customer')],
+            ]);
+        }
+
+        $promoLines = collect($cart)->filter(
+            fn ($line) => (int) ($line['promotion_id'] ?? 0) === (int) $banner->id
+        );
+
+        $paidLines = $promoLines->filter(fn ($line) => ($line['promotion_role'] ?? null) === 'paid');
+        $rewardLines = $promoLines->filter(fn ($line) => ($line['promotion_role'] ?? null) === 'reward');
+
+        if ($paidLines->count() !== 1 || $rewardLines->count() !== 1) {
+            throw ValidationException::withMessages([
+                'promotion_id' => [translate('Invalid promotion cart items')],
+            ]);
+        }
+
+        $paidLine = $paidLines->first();
+        $rewardLine = $rewardLines->first();
+
+        if ((int) ($rewardLine['quantity'] ?? 1) > $banner->max_reward_qty) {
+            throw ValidationException::withMessages([
+                'promotion_id' => [translate('Maximum reward quantity exceeded')],
+            ]);
+        }
+
+        if (!$this->lineMatchesGroupItem($banner, 1, $paidLine)) {
+            throw ValidationException::withMessages([
+                'promotion_id' => [translate('Selected paid item is not eligible for this promotion')],
+            ]);
+        }
+
+        if (!$this->lineMatchesGroupItem($banner, 2, $rewardLine)) {
+            throw ValidationException::withMessages([
+                'promotion_id' => [translate('Selected reward item is not eligible for this promotion')],
+            ]);
+        }
+    }
+
+    public function lineMatchesGroupItem(Banner $banner, int $groupNumber, array $cartLine): bool
+    {
+        $productId = (int) ($cartLine['product_id'] ?? 0);
+        $variations = $cartLine['variations'] ?? [];
+
+        return $banner->groupItems
+            ->where('group_number', $groupNumber)
+            ->contains(function (BannerGroupItem $item) use ($productId, $variations) {
+                return (int) $item->product_id === $productId
+                    && $this->variationsMatch($item->variations ?? [], $variations);
+            });
+    }
+
+    public function variationsMatch(array $expected, array $actual): bool
+    {
+        $expectedNormalized = $this->normalizeVariationLabels($expected);
+        $actualNormalized = $this->normalizeVariationLabels($actual);
+
+        if (empty($expectedNormalized) && empty($actualNormalized)) {
+            return true;
+        }
+
+        return $expectedNormalized === $actualNormalized;
+    }
+
+    public function normalizeVariationLabels(array $variations): array
+    {
+        $normalized = [];
+
+        foreach ($variations as $variation) {
+            if (!is_array($variation) || empty($variation['name'])) {
+                continue;
+            }
+
+            $labels = $variation['values']['label'] ?? [];
+            if (!is_array($labels)) {
+                $labels = [$labels];
+            }
+
+            $labels = array_values(array_filter(array_map('strval', $labels)));
+            sort($labels);
+            $normalized[$variation['name']] = $labels;
+        }
+
+        ksort($normalized);
+
+        return $normalized;
+    }
+
+    public function calculateRewardDiscount(Banner $banner, float $rewardLineAmount, Collection $groupTwoItems): float
+    {
+        if ($rewardLineAmount <= 0) {
+            return 0;
+        }
+
+        if ($banner->promotion_type === Banner::PROMOTION_TYPE_FIXED_AMOUNT) {
+            return min($banner->reward_discount_value, $rewardLineAmount);
+        }
+
+        $percent = $this->resolveRewardPercent($banner, $groupTwoItems);
+
+        return min($rewardLineAmount, ($rewardLineAmount * $percent) / 100);
+    }
+
+    public function resolveRewardPercent(Banner $banner, Collection $groupTwoItems): float
+    {
+        if ($banner->promotion_type === Banner::PROMOTION_TYPE_FIXED_AMOUNT) {
+            return 0;
+        }
+
+        if ($groupTwoItems->count() <= 1) {
+            return (float) ($banner->reward_discount_value ?? 0);
+        }
+
+        $prices = $groupTwoItems
+            ->map(fn (BannerGroupItem $item) => (float) ($item->product?->price ?? 0))
+            ->filter(fn ($price) => $price > 0)
+            ->values();
+
+        if ($prices->count() <= 1) {
+            return (float) ($banner->reward_discount_value ?? 0);
+        }
+
+        $minPrice = $prices->min();
+        $maxPrice = $prices->max();
+        $rewardPrice = (float) ($groupTwoItems->last()?->product?->price ?? 0);
+
+        if ($rewardPrice <= $minPrice && $banner->discount_cheapest_percent !== null) {
+            return (float) $banner->discount_cheapest_percent;
+        }
+
+        if ($rewardPrice >= $maxPrice && $banner->discount_expensive_percent !== null) {
+            return (float) $banner->discount_expensive_percent;
+        }
+
+        return (float) ($banner->reward_discount_value ?? 0);
+    }
+
+    public function shouldChargeAddons(Banner $banner, ?string $role): bool
+    {
+        if ($role === 'paid') {
+            return (bool) $banner->charge_paid_addons;
+        }
+
+        if ($role === 'reward') {
+            return (bool) $banner->charge_reward_addons;
+        }
+
+        return true;
+    }
+
+    public function recordUsage(Banner $banner, int|string|null $userId, int $isGuest, int|string $orderId): void
+    {
+        PromotionUsage::create([
+            'banner_id' => $banner->id,
+            'user_id' => $isGuest === 0 ? $userId : null,
+            'guest_id' => $isGuest === 1 ? $userId : null,
+            'order_id' => $orderId,
+        ]);
+
+        $banner->increment('usage_count');
+    }
+
+    public function formatBannerForApi(Banner $banner, int $branchId): array
+    {
+        $groupOne = [];
+        $groupTwo = [];
+
+        foreach ($banner->groupItems as $groupItem) {
+            $product = $groupItem->product;
+            if (!$product) {
+                continue;
+            }
+
+            $formattedProduct = Helpers::product_data_formatting($product, false);
+            $entry = [
+                'id' => $groupItem->id,
+                'product_id' => $groupItem->product_id,
+                'variations' => $groupItem->variations ?? [],
+                'sort_order' => $groupItem->sort_order,
+                'product' => $formattedProduct,
+            ];
+
+            if ((int) $groupItem->group_number === 1) {
+                $groupOne[] = $entry;
+            } else {
+                $groupTwo[] = $entry;
+            }
+        }
+
+        return [
+            'id' => $banner->id,
+            'title' => $banner->title,
+            'headline' => $banner->headline,
+            'description' => $banner->description,
+            'image' => $banner->image,
+            'promotion_type' => $banner->promotion_type,
+            'reward_discount_value' => $banner->reward_discount_value,
+            'discount_cheapest_percent' => $banner->discount_cheapest_percent,
+            'discount_expensive_percent' => $banner->discount_expensive_percent,
+            'charge_paid_addons' => $banner->charge_paid_addons,
+            'charge_reward_addons' => $banner->charge_reward_addons,
+            'order_type_mode' => $banner->order_type_mode,
+            'order_types' => $banner->order_types,
+            'payment_methods' => $banner->payment_methods,
+            'once_per_customer' => $banner->once_per_customer,
+            'max_reward_qty' => $banner->max_reward_qty,
+            'start_date' => $banner->start_date?->toIso8601String(),
+            'end_date' => $banner->end_date?->toIso8601String(),
+            'group_1' => $groupOne,
+            'group_2' => $groupTwo,
+        ];
+    }
+}

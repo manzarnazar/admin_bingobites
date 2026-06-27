@@ -136,6 +136,7 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
             Route::get('list', [BannerController::class, 'list'])->name('list');
             Route::get('status/{id}/{status}', [BannerController::class, 'status'])->name('status');
             Route::delete('delete/{id}', [BannerController::class, 'delete'])->name('delete');
+            Route::get('product-variations/{productId}', [BannerController::class, 'productVariations'])->name('product-variations');
         });
 
         Route::group(['prefix' => 'attribute', 'as' => 'attribute.', 'middleware' => ['module:product_management']], function () {

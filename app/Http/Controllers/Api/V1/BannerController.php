@@ -2,29 +2,33 @@
 
 namespace App\Http\Controllers\Api\V1;
 
-use App\CentralLogics\Helpers;
 use App\Http\Controllers\Controller;
 use App\Model\Banner;
+use App\Services\PromoOrderService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class BannerController extends Controller
 {
     public function __construct(
-        private Banner $banner
-    )
-    {
-    }
+        private Banner $banner,
+        private PromoOrderService $promoOrderService,
+    ) {}
 
-    /**
-     * @return JsonResponse
-     */
-    public function getBanners(): JsonResponse
+    public function getBanners(Request $request): JsonResponse
     {
-        $banners = $this->banner->with(['product.rating','product.branch_product'])->active()->get();
-        foreach($banners as $banner){
-            $banner['product'] = isset($banner['product']) ? Helpers::product_data_formatting($banner['product']) : null;
-        }
+        $branchId = (int) ($request->header('branch-id') ?? 0);
 
-        return response()->json($banners, 200);
+        $banners = $this->banner
+            ->with(['groupItems.product.rating', 'groupItems.product.branch_product'])
+            ->active()
+            ->currentlyValid()
+            ->get();
+
+        $formatted = $banners
+            ->map(fn (Banner $banner) => $this->promoOrderService->formatBannerForApi($banner, $branchId))
+            ->values();
+
+        return response()->json($formatted, 200);
     }
 }
