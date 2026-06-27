@@ -1,5 +1,5 @@
 @php
-    $formAction = $promotion->id ? route('admin.promotion-deal.update', $promotion->id) : route('admin.promotion-deal.store');
+    $formAction = $promotion->id ? route('admin.promotion.update', $promotion->id) : route('admin.promotion.store');
     $group1Products = $group1Products ?? [];
     $group2Products = $group2Products ?? [];
 @endphp
@@ -153,7 +153,7 @@
             </div>
 
             <div class="d-flex justify-content-end gap-3">
-                <a href="{{ route('admin.promotion-deal.list') }}" class="btn btn-secondary">{{translate('back')}}</a>
+                <a href="{{ route('admin.promotion.list') }}" class="btn btn-secondary">{{translate('back')}}</a>
                 <button type="submit" class="btn btn-primary">{{translate('submit')}}</button>
             </div>
         </form>
