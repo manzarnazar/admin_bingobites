@@ -116,11 +116,7 @@
     <script>
         window.bannerPromoConfig = {
             productVariationsUrl: "{{ url('admin/banner/product-variations') }}",
-            products: @json($products->map(fn ($product) => [
-                'id' => $product->id,
-                'name' => $product->name,
-                'image' => $product->imageFullPath,
-            ])),
+            products: @json($productsPicker),
             groupOneCount: 0,
             groupTwoCount: 0,
         };

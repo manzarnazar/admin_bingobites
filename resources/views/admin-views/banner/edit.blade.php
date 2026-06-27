@@ -34,11 +34,7 @@
     <script>
         window.bannerPromoConfig = {
             productVariationsUrl: "{{ url('admin/banner/product-variations') }}",
-            products: @json($products->map(fn ($product) => [
-                'id' => $product->id,
-                'name' => $product->name,
-                'image' => $product->imageFullPath,
-            ])),
+            products: @json($productsPicker),
             groupOneCount: {{ Schema::hasTable('banner_group_items') ? $banner->groupItems->where('group_number', 1)->count() : 0 }},
             groupTwoCount: {{ Schema::hasTable('banner_group_items') ? $banner->groupItems->where('group_number', 2)->count() : 0 }},
         };

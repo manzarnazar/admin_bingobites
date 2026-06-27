@@ -31,6 +31,7 @@ class BannerController extends Controller
     {
         $search = $request->search;
         $products = $this->productsForPicker();
+        $productsPicker = $this->productsPickerPayload();
         $paymentMethods = $this->paymentMethodOptions();
 
         $banners = $this->banner
@@ -51,7 +52,7 @@ class BannerController extends Controller
             ->paginate(Helpers::getPagination())
             ->appends(['search' => $search]);
 
-        return view('admin-views.banner.list', compact('banners', 'search', 'products', 'paymentMethods'));
+        return view('admin-views.banner.list', compact('banners', 'search', 'products', 'paymentMethods', 'productsPicker'));
     }
 
     public function store(Request $request): RedirectResponse
@@ -75,9 +76,10 @@ class BannerController extends Controller
 
         $banner = $query->findOrFail($id);
         $products = $this->productsForPicker();
+        $productsPicker = $this->productsPickerPayload();
         $paymentMethods = $this->paymentMethodOptions();
 
-        return view('admin-views.banner.edit', compact('banner', 'products', 'paymentMethods'));
+        return view('admin-views.banner.edit', compact('banner', 'products', 'productsPicker', 'paymentMethods'));
     }
 
     public function status(Request $request): RedirectResponse
@@ -134,6 +136,20 @@ class BannerController extends Controller
     private function productsForPicker()
     {
         return $this->product->orderBy('name')->get(['id', 'name', 'image']);
+    }
+
+    private function productsPickerPayload(): array
+    {
+        return $this->productsForPicker()
+            ->map(function ($product) {
+                return [
+                    'id' => $product->id,
+                    'name' => $product->name,
+                    'image' => $product->imageFullPath,
+                ];
+            })
+            ->values()
+            ->all();
     }
 
     private function paymentMethodOptions(): array

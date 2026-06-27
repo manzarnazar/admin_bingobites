@@ -1,12 +1,12 @@
 @php
     $productModel = $item->product ?? $products->firstWhere('id', $item->product_id);
-    $productName = $productModel->name ?? ('Product #' . $item->product_id);
+    $productName = $productModel?->name ?? ('Product #' . $item->product_id);
     $productImage = $productModel?->imageFullPath ?? asset('public/assets/admin/img/160x160/img2.jpg');
     $savedMap = [];
     foreach ($item->variations ?? [] as $variation) {
         $savedMap[$variation['name'] ?? ''] = $variation['values']['label'][0] ?? '';
     }
-    $productVariations = json_decode($productModel->variations ?? '[]', true) ?: [];
+    $productVariations = json_decode($productModel?->variations ?? '[]', true) ?: [];
     $variationIndex = 0;
 @endphp
 <div class="promo-group-item card mb-2" data-product-id="{{ $item->product_id }}">
