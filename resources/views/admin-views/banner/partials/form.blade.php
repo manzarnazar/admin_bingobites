@@ -56,12 +56,18 @@
             <div class="card-body">
                 <div class="form-group">
                     <label class="input-label">{{ translate('product') }}</label>
-                    <select id="group-1-product-picker" class="custom-select js-select2-custom">
-                        <option value="">{{ translate('select_a_product') }}</option>
-                        @foreach($products as $product)
-                            <option value="{{ $product->id }}">{{ $product->name }}</option>
-                        @endforeach
-                    </select>
+                    <div class="input-group">
+                        <select id="group-1-product-picker" class="custom-select js-select2-custom">
+                            <option value="">{{ translate('select_a_product') }}</option>
+                            @foreach($products as $product)
+                                <option value="{{ $product->id }}">{{ $product->name }}</option>
+                            @endforeach
+                        </select>
+                        <div class="input-group-append">
+                            <button type="button" class="btn btn-primary" id="group-1-add-product">{{ translate('Add') }}</button>
+                        </div>
+                    </div>
+                    <small class="text-muted d-block mt-1">{{ translate('Selected products appear in the list below') }}</small>
                 </div>
                 <div id="group-1-items" class="promo-group-items" data-group="1">
                     @foreach($groupOneItems as $index => $item)
@@ -80,12 +86,18 @@
             <div class="card-body">
                 <div class="form-group">
                     <label class="input-label">{{ translate('product') }}</label>
-                    <select id="group-2-product-picker" class="custom-select js-select2-custom">
-                        <option value="">{{ translate('select_a_product') }}</option>
-                        @foreach($products as $product)
-                            <option value="{{ $product->id }}">{{ $product->name }}</option>
-                        @endforeach
-                    </select>
+                    <div class="input-group">
+                        <select id="group-2-product-picker" class="custom-select js-select2-custom">
+                            <option value="">{{ translate('select_a_product') }}</option>
+                            @foreach($products as $product)
+                                <option value="{{ $product->id }}">{{ $product->name }}</option>
+                            @endforeach
+                        </select>
+                        <div class="input-group-append">
+                            <button type="button" class="btn btn-primary" id="group-2-add-product">{{ translate('Add') }}</button>
+                        </div>
+                    </div>
+                    <small class="text-muted d-block mt-1">{{ translate('Selected products appear in the list below') }}</small>
                 </div>
                 <div id="group-2-items" class="promo-group-items" data-group="2">
                     @foreach($groupTwoItems as $index => $item)

@@ -115,26 +115,45 @@
         `;
     }
 
+    function getPickerValue(group) {
+        const picker = document.getElementById(`group-${group}-product-picker`);
+        if (!picker) return "";
+
+        if (typeof window.jQuery !== "undefined") {
+            return window.jQuery(picker).val() || "";
+        }
+
+        return picker.value || "";
+    }
+
     function resetPicker(group) {
         const picker = document.getElementById(`group-${group}-product-picker`);
         if (!picker) return;
 
         picker.value = "";
         if (typeof window.jQuery !== "undefined") {
-            window.jQuery(picker).val("").trigger("change");
+            window.jQuery(picker).val(null).trigger("change");
         }
     }
 
     function addProductToGroup(group, productId) {
-        if (!productId) return;
+        if (!productId) {
+            return Promise.resolve(false);
+        }
 
         const container = document.getElementById(`group-${group}-items`);
-        if (!container || container.querySelector(`[data-product-id="${productId}"]`)) {
-            return;
+        if (!container) {
+            return Promise.resolve(false);
+        }
+
+        if (container.querySelector(`[data-product-id="${productId}"]`)) {
+            resetPicker(group);
+            return Promise.resolve(true);
         }
 
         const url = `${config.productVariationsUrl}/${productId}`;
-        fetch(url, {
+
+        return fetch(url, {
             headers: {
                 Accept: "application/json",
                 "X-Requested-With": "XMLHttpRequest",
@@ -158,32 +177,91 @@
                     []
                 );
                 container.insertAdjacentHTML("beforeend", html);
-            })
-            .catch(function () {
-                alert("Could not load product variations. Please try again.");
+                resetPicker(group);
+                return true;
             });
+    }
+
+    function addSelectedProduct(group) {
+        const productId = getPickerValue(group);
+        if (!productId) {
+            alert(window.translateSelectProduct || "Please select a product first.");
+            return Promise.resolve(false);
+        }
+
+        return addProductToGroup(group, productId).catch(function () {
+            alert("Could not load product variations. Please try again.");
+            return false;
+        });
+    }
+
+    function flushPickerSelection(group) {
+        const productId = getPickerValue(group);
+        if (!productId) {
+            return Promise.resolve(true);
+        }
+
+        return addSelectedProduct(group);
     }
 
     function bindProductPicker(group) {
         const picker = document.getElementById(`group-${group}-product-picker`);
+        const addButton = document.getElementById(`group-${group}-add-product`);
         if (!picker) return;
+
+        if (addButton) {
+            addButton.addEventListener("click", function () {
+                addSelectedProduct(group);
+            });
+        }
+
+        if (typeof window.jQuery !== "undefined") {
+            window.jQuery(picker).on("change", function () {
+                const productId = window.jQuery(this).val();
+                if (!productId) return;
+                addProductToGroup(group, productId);
+            });
+
+            window.jQuery(picker).on("select2:select", function (event) {
+                const productId = event.params && event.params.data ? event.params.data.id : window.jQuery(this).val();
+                if (!productId) return;
+                addProductToGroup(group, productId);
+            });
+            return;
+        }
 
         picker.addEventListener("change", function () {
             const productId = picker.value;
             if (!productId) return;
             addProductToGroup(group, productId);
-            resetPicker(group);
         });
     }
 
-    function validatePromoForm(event) {
-        const groupOneCount = document.querySelectorAll("#group-1-items .promo-group-item").length;
-        const groupTwoCount = document.querySelectorAll("#group-2-items .promo-group-item").length;
+    function countGroupItems(group) {
+        const container = document.getElementById(`group-${group}-items`);
+        if (!container) return 0;
+        return container.querySelectorAll(".promo-group-item").length;
+    }
 
-        if (groupOneCount < 1 || groupTwoCount < 1) {
-            event.preventDefault();
-            alert("Please add at least one product to Group 1 and Group 2.");
-        }
+    function validatePromoForm(event) {
+        event.preventDefault();
+        const form = event.target;
+
+        Promise.all([flushPickerSelection(1), flushPickerSelection(2)]).then(function () {
+            const groupOneCount = countGroupItems(1);
+            const groupTwoCount = countGroupItems(2);
+
+            if (groupOneCount < 1 || groupTwoCount < 1) {
+                alert(
+                    window.translateGroupProductsRequired ||
+                        "Please add at least one product to Group 1 and Group 2. Select a product, click Add, and confirm it appears in the list below."
+                );
+                return;
+            }
+
+            form.removeEventListener("submit", validatePromoForm);
+            form.submit();
+        });
     }
 
     document.addEventListener("DOMContentLoaded", function () {

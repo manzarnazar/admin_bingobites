@@ -38,6 +38,8 @@
             groupTwoCount: {{ Schema::hasTable('banner_group_items') ? $banner->groupItems->where('group_number', 2)->count() : 0 }},
         };
         window.translateRemove = @json(translate('Remove'));
+        window.translateSelectProduct = @json(translate('Please select a product first'));
+        window.translateGroupProductsRequired = @json(translate('Please add at least one product to Group 1 and Group 2. Select a product, click Add, and confirm it appears in the list below.'));
     </script>
-    <script src="{{ asset('public/assets/admin/js/banner-promo.js') }}?v=2"></script>
+    <script src="{{ asset('public/assets/admin/js/banner-promo.js') }}?v=3"></script>
 @endpush
