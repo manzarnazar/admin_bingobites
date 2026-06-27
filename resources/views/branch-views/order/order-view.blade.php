@@ -414,7 +414,7 @@
                                         </dd>
                                     @endif
 
-                                    @if($order->order_change_amount()->exists())
+                                    @if($order->order_change_amount()->exists() && !($order->payment_method === 'cash_on_delivery' && $order->payment_status === 'unpaid'))
                                         <dt class="col-6">
                                             <div class="d-flex max-w220 ml-auto">
                                                 <span>{{ translate('paid_amount') }}</span><span>:</span>

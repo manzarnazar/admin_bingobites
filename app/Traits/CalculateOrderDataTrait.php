@@ -227,7 +227,6 @@ trait CalculateOrderDataTrait
                     $banner->groupItems->where('group_number', 2)
                 );
                 $promotionDiscountAmount += $linePromoDiscount;
-                $totalDiscountOnProduct += $linePromoDiscount;
             }
 
             $totalAddonPrice += $addonPrice;
@@ -235,7 +234,7 @@ trait CalculateOrderDataTrait
 
         }
 
-        $totalPriceForCalculation = (($totalProductPrice  - $totalDiscountOnProduct) + $totalAddonPrice);
+        $totalPriceForCalculation = (($totalProductPrice - $totalDiscountOnProduct - $promotionDiscountAmount) + $totalAddonPrice);
 
         if ($isGuest == 0 && $userId != null) {
             $registeredCustomer = User::find($userId);
@@ -269,6 +268,7 @@ trait CalculateOrderDataTrait
             + $totalAddonPrice
             + $totalAddonTax
             - $totalDiscountOnProduct
+            - $promotionDiscountAmount
             - $couponDiscountAmount
             - $referralDiscountAmount;
 

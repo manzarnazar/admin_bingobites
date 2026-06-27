@@ -404,29 +404,6 @@ class OrderController extends Controller
                     );
                 }
 
-                if ($isPromoLine && $promotionRole === 'reward') {
-                    if (!$promotionBanner->relationLoaded('groupItems')) {
-                        $promotionBanner->load('groupItems');
-                    }
-
-                    $rewardLineAmount = (($price - $discountOnProduct) * $c['quantity']) + $addonPrice;
-
-                    if (!$promoService->shouldChargeAddons($promotionBanner, $promotionRole)) {
-                        $basePrice = $branchProduct
-                            ? (float) $branchProduct['price']
-                            : (float) $product->price;
-                        $rewardLineAmount = (max(0, $basePrice - Helpers::discount_calculate($discountData, $basePrice)))
-                            * $c['quantity'];
-                    }
-
-                    $linePromoDiscount = $promoService->calculateRewardDiscount(
-                        $promotionBanner,
-                        $rewardLineAmount,
-                        $promotionBanner->groupItems->where('group_number', 2)
-                    );
-                    $discountOnProduct += $linePromoDiscount / max((int) $c['quantity'], 1);
-                }
-
                 $orderDetail = [
                     'order_id' => $orderId,
                     'product_id' => $c['product_id'],
