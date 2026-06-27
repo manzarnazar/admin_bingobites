@@ -145,11 +145,23 @@ class PromoOrderService
         $expectedNormalized = $this->normalizeVariationLabels($expected);
         $actualNormalized = $this->normalizeVariationLabels($actual);
 
-        if (empty($expectedNormalized) && empty($actualNormalized)) {
+        if (empty($expectedNormalized)) {
             return true;
         }
 
-        return $expectedNormalized === $actualNormalized;
+        foreach ($expectedNormalized as $name => $expectedLabels) {
+            if (!isset($actualNormalized[$name])) {
+                return false;
+            }
+
+            foreach ($expectedLabels as $label) {
+                if (!in_array($label, $actualNormalized[$name], true)) {
+                    return false;
+                }
+            }
+        }
+
+        return true;
     }
 
     public function normalizeVariationLabels(array $variations): array
