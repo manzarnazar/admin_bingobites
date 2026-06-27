@@ -34,12 +34,23 @@
     <script>
         window.bannerPromoConfig = {
             productVariationsUrl: "{{ url('admin/banner/product-variations') }}",
+            products: @json($products->map(fn ($product) => [
+                'id' => $product->id,
+                'name' => $product->name,
+                'image' => $product->imageFullPath,
+            ])),
             groupOneCount: {{ Schema::hasTable('banner_group_items') ? $banner->groupItems->where('group_number', 1)->count() : 0 }},
             groupTwoCount: {{ Schema::hasTable('banner_group_items') ? $banner->groupItems->where('group_number', 2)->count() : 0 }},
         };
         window.translateRemove = @json(translate('Remove'));
-        window.translateSelectProduct = @json(translate('Please select a product first'));
-        window.translateGroupProductsRequired = @json(translate('Please add at least one product to Group 1 and Group 2. Select a product, click Add, and confirm it appears in the list below.'));
+        window.translateGroupProductsRequired = @json(translate('Please add at least one product to Group 1 and Group 2.'));
+        window.translateGroupOneTitle = @json(translate('Items Group 1'));
+        window.translateGroupTwoTitle = @json(translate('Items Group 2'));
+        window.translateAddToGroup = @json(translate('Add to group'));
+        window.translateSelectProduct = @json(translate('Select product'));
+        window.translateChooseVariation = @json(translate('Choose the variation for this promo item'));
+        window.translateNoVariations = @json(translate('This product has no variations. Click Add to include it.'));
+        window.translateLoadFailed = @json(translate('Could not load product details. Please try again.'));
     </script>
-    <script src="{{ asset('public/assets/admin/js/banner-promo.js') }}?v=3"></script>
+    <script src="{{ asset('public/assets/admin/js/banner-promo.js') }}?v=4"></script>
 @endpush

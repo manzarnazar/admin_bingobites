@@ -54,21 +54,10 @@
                 <small class="text-muted d-block">{{ translate('Customer buys one of these') }}</small>
             </div>
             <div class="card-body">
-                <div class="form-group">
-                    <label class="input-label">{{ translate('product') }}</label>
-                    <div class="input-group">
-                        <select id="group-1-product-picker" class="custom-select js-select2-custom">
-                            <option value="">{{ translate('select_a_product') }}</option>
-                            @foreach($products as $product)
-                                <option value="{{ $product->id }}">{{ $product->name }}</option>
-                            @endforeach
-                        </select>
-                        <div class="input-group-append">
-                            <button type="button" class="btn btn-primary" id="group-1-add-product">{{ translate('Add') }}</button>
-                        </div>
-                    </div>
-                    <small class="text-muted d-block mt-1">{{ translate('Selected products appear in the list below') }}</small>
-                </div>
+                <button type="button" class="btn btn-primary open-product-picker mb-3" data-group="1">
+                    <i class="tio-add"></i> {{ translate('Browse products') }}
+                </button>
+                <small class="text-muted d-block mb-3">{{ translate('Selected products appear in the list below') }}</small>
                 <div id="group-1-items" class="promo-group-items" data-group="1">
                     @foreach($groupOneItems as $index => $item)
                         @include('admin-views.banner.partials.group-item', ['group' => 1, 'index' => $index, 'item' => $item, 'products' => $products])
@@ -84,21 +73,10 @@
                 <small class="text-muted d-block">{{ translate('Customer receives the offer on one of these') }}</small>
             </div>
             <div class="card-body">
-                <div class="form-group">
-                    <label class="input-label">{{ translate('product') }}</label>
-                    <div class="input-group">
-                        <select id="group-2-product-picker" class="custom-select js-select2-custom">
-                            <option value="">{{ translate('select_a_product') }}</option>
-                            @foreach($products as $product)
-                                <option value="{{ $product->id }}">{{ $product->name }}</option>
-                            @endforeach
-                        </select>
-                        <div class="input-group-append">
-                            <button type="button" class="btn btn-primary" id="group-2-add-product">{{ translate('Add') }}</button>
-                        </div>
-                    </div>
-                    <small class="text-muted d-block mt-1">{{ translate('Selected products appear in the list below') }}</small>
-                </div>
+                <button type="button" class="btn btn-primary open-product-picker mb-3" data-group="2">
+                    <i class="tio-add"></i> {{ translate('Browse products') }}
+                </button>
+                <small class="text-muted d-block mb-3">{{ translate('Selected products appear in the list below') }}</small>
                 <div id="group-2-items" class="promo-group-items" data-group="2">
                     @foreach($groupTwoItems as $index => $item)
                         @include('admin-views.banner.partials.group-item', ['group' => 2, 'index' => $index, 'item' => $item, 'products' => $products])
@@ -108,6 +86,8 @@
         </div>
     </div>
 </div>
+
+@include('admin-views.banner.partials.product-picker-modal')
 
 <hr>
 <h5 class="mb-3">{{ translate('Promotion Type') }}</h5>

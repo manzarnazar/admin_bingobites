@@ -2,10 +2,14 @@
 
 (function () {
     const config = window.bannerPromoConfig || {};
+    const products = config.products || [];
     let groupCounters = {
         1: config.groupOneCount || 0,
         2: config.groupTwoCount || 0,
     };
+    let activeGroup = null;
+    let selectedProduct = null;
+    let selectedProductDetails = null;
 
     function $(selector, root) {
         return (root || document).querySelector(selector);
@@ -15,14 +19,12 @@
         return Array.from((root || document).querySelectorAll(selector));
     }
 
-    function initSelect2() {
-        if (typeof window.jQuery === "undefined" || !window.jQuery.HSCore) {
-            return;
-        }
-
-        window.jQuery(".js-select2-custom").each(function () {
-            window.jQuery.HSCore.components.HSSelect2.init(window.jQuery(this));
-        });
+    function escapeHtml(value) {
+        return String(value ?? "")
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;");
     }
 
     function readImagePreview(input) {
@@ -74,7 +76,13 @@
         }
     }
 
-    function buildVariationFields(group, index, productName, productId, variations, savedVariations) {
+    function filterVariations(variations) {
+        return (variations || []).filter(function (variation) {
+            return variation && typeof variation === "object" && !Object.prototype.hasOwnProperty.call(variation, "price");
+        });
+    }
+
+    function buildVariationFieldsHtml(group, index, variations, savedVariations, fieldClass) {
         const savedMap = {};
         (savedVariations || []).forEach(function (variation) {
             savedMap[variation.name] =
@@ -82,18 +90,18 @@
         });
 
         let variationHtml = "";
-        (variations || []).forEach(function (variation, vIndex) {
+        filterVariations(variations).forEach(function (variation, vIndex) {
             const options = variation.values || [];
-            const selected = savedMap[variation.name] || (options[0] && options[0].label) || "";
+            const selected = savedMap[variation.name] || (options[0] && (options[0].label || options[0].level)) || "";
             variationHtml += `
                 <div class="form-group mb-2">
-                    <label class="input-label">${variation.name}</label>
-                    <input type="hidden" name="group_${group}[${index}][variations][${vIndex}][name]" value="${variation.name}">
-                    <select name="group_${group}[${index}][variations][${vIndex}][values][label][]" class="form-control" required>
+                    <label class="input-label mb-1">${escapeHtml(variation.name)}</label>
+                    <input type="hidden" name="group_${group}[${index}][variations][${vIndex}][name]" value="${escapeHtml(variation.name)}">
+                    <select name="group_${group}[${index}][variations][${vIndex}][values][label][]" class="form-control form-control-sm ${fieldClass || ""}" required>
                         ${options
                             .map(function (option) {
                                 const label = option.label || option.level || "";
-                                return `<option value="${label}" ${label === selected ? "selected" : ""}>${label}</option>`;
+                                return `<option value="${escapeHtml(label)}" ${label === selected ? "selected" : ""}>${escapeHtml(label)}</option>`;
                             })
                             .join("")}
                     </select>
@@ -101,56 +109,101 @@
             `;
         });
 
+        return variationHtml;
+    }
+
+    function buildGroupItemHtml(group, index, productName, productId, productImage, variations, savedVariations) {
+        const variationHtml = buildVariationFieldsHtml(group, index, variations, savedVariations, "");
+        const fallbackImage = config.fallbackImage || "";
+
         return `
             <div class="promo-group-item card mb-2" data-product-id="${productId}">
                 <div class="card-body py-3">
-                    <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
-                        <strong>${productName}</strong>
-                        <button type="button" class="btn btn-sm btn-outline-danger remove-group-item">${window.translateRemove || "Remove"}</button>
+                    <div class="d-flex gap-3">
+                        <img src="${escapeHtml(productImage || fallbackImage)}" alt="${escapeHtml(productName)}" class="promo-group-item-thumb rounded border">
+                        <div class="flex-grow-1 min-w-0">
+                            <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
+                                <strong class="text-wrap">${escapeHtml(productName)}</strong>
+                                <button type="button" class="btn btn-sm btn-outline-danger remove-group-item flex-shrink-0">${escapeHtml(window.translateRemove || "Remove")}</button>
+                            </div>
+                            <input type="hidden" name="group_${group}[${index}][product_id]" value="${productId}">
+                            <div class="variation-fields">${variationHtml}</div>
+                        </div>
                     </div>
-                    <input type="hidden" name="group_${group}[${index}][product_id]" value="${productId}">
-                    <div class="variation-fields">${variationHtml}</div>
                 </div>
             </div>
         `;
     }
 
-    function getPickerValue(group) {
-        const picker = document.getElementById(`group-${group}-product-picker`);
-        if (!picker) return "";
+    function showPickerStep(step) {
+        const productsStep = $("#promo-picker-step-products");
+        const variationsStep = $("#promo-picker-step-variations");
+        const confirmButton = $("#promo-picker-confirm-add");
 
-        if (typeof window.jQuery !== "undefined") {
-            return window.jQuery(picker).val() || "";
-        }
-
-        return picker.value || "";
+        if (productsStep) productsStep.classList.toggle("d-none", step !== "products");
+        if (variationsStep) variationsStep.classList.toggle("d-none", step !== "variations");
+        if (confirmButton) confirmButton.classList.toggle("d-none", step !== "variations");
     }
 
-    function resetPicker(group) {
-        const picker = document.getElementById(`group-${group}-product-picker`);
-        if (!picker) return;
+    function renderProductGrid(query) {
+        const grid = $("#promo-picker-product-grid");
+        const emptyState = $("#promo-picker-empty");
+        if (!grid) return;
 
-        picker.value = "";
-        if (typeof window.jQuery !== "undefined") {
-            window.jQuery(picker).val(null).trigger("change");
+        const normalizedQuery = (query || "").trim().toLowerCase();
+        const filtered = products.filter(function (product) {
+            return !normalizedQuery || String(product.name || "").toLowerCase().includes(normalizedQuery);
+        });
+
+        grid.innerHTML = filtered
+            .map(function (product) {
+                return `
+                    <button type="button" class="promo-product-card promo-picker-product" data-product-id="${product.id}">
+                        <img src="${escapeHtml(product.image)}" alt="${escapeHtml(product.name)}">
+                        <span class="promo-product-card__name">${escapeHtml(product.name)}</span>
+                    </button>
+                `;
+            })
+            .join("");
+
+        if (emptyState) {
+            emptyState.classList.toggle("d-none", filtered.length > 0);
         }
     }
 
-    function addProductToGroup(group, productId) {
-        if (!productId) {
-            return Promise.resolve(false);
+    function openProductPicker(group) {
+        activeGroup = group;
+        selectedProduct = null;
+        selectedProductDetails = null;
+
+        const modalTitle = $("#promoProductPickerLabel");
+        if (modalTitle) {
+            modalTitle.textContent =
+                group === 1
+                    ? window.translateGroupOneTitle || "Items Group 1"
+                    : window.translateGroupTwoTitle || "Items Group 2";
         }
 
-        const container = document.getElementById(`group-${group}-items`);
-        if (!container) {
-            return Promise.resolve(false);
+        const searchInput = $("#promo-picker-search");
+        if (searchInput) {
+            searchInput.value = "";
         }
 
-        if (container.querySelector(`[data-product-id="${productId}"]`)) {
-            resetPicker(group);
-            return Promise.resolve(true);
-        }
+        renderProductGrid("");
+        showPickerStep("products");
 
+        if (typeof window.jQuery !== "undefined") {
+            window.jQuery("#promo-product-picker-modal").modal("show");
+        }
+    }
+
+    function closeProductPicker() {
+        if (typeof window.jQuery !== "undefined") {
+            window.jQuery("#promo-product-picker-modal").modal("hide");
+        }
+    }
+
+    function loadProductDetails(productId) {
         const url = `${config.productVariationsUrl}/${productId}`;
 
         return fetch(url, {
@@ -159,82 +212,106 @@
                 "X-Requested-With": "XMLHttpRequest",
             },
             credentials: "same-origin",
-        })
-            .then(function (response) {
-                if (!response.ok) {
-                    throw new Error("Failed to load product variations");
-                }
-                return response.json();
-            })
-            .then(function (response) {
-                const index = groupCounters[group]++;
-                const html = buildVariationFields(
-                    group,
-                    index,
-                    response.product_name,
-                    response.product_id,
-                    response.variations,
-                    []
-                );
-                container.insertAdjacentHTML("beforeend", html);
-                resetPicker(group);
-                return true;
-            });
-    }
-
-    function addSelectedProduct(group) {
-        const productId = getPickerValue(group);
-        if (!productId) {
-            alert(window.translateSelectProduct || "Please select a product first.");
-            return Promise.resolve(false);
-        }
-
-        return addProductToGroup(group, productId).catch(function () {
-            alert("Could not load product variations. Please try again.");
-            return false;
+        }).then(function (response) {
+            if (!response.ok) {
+                throw new Error("Failed to load product");
+            }
+            return response.json();
         });
     }
 
-    function flushPickerSelection(group) {
-        const productId = getPickerValue(group);
-        if (!productId) {
-            return Promise.resolve(true);
-        }
+    function renderVariationStep(details) {
+        const image = $("#promo-picker-selected-image");
+        const name = $("#promo-picker-selected-name");
+        const fields = $("#promo-picker-variation-fields");
+        const noVariations = $("#promo-picker-no-variations");
+        const variations = filterVariations(details.variations);
 
-        return addSelectedProduct(group);
-    }
+        if (image) image.setAttribute("src", details.product_image || "");
+        if (name) name.textContent = details.product_name || "";
 
-    function bindProductPicker(group) {
-        const picker = document.getElementById(`group-${group}-product-picker`);
-        const addButton = document.getElementById(`group-${group}-add-product`);
-        if (!picker) return;
+        if (!fields || !noVariations) return;
 
-        if (addButton) {
-            addButton.addEventListener("click", function () {
-                addSelectedProduct(group);
-            });
-        }
-
-        if (typeof window.jQuery !== "undefined") {
-            window.jQuery(picker).on("change", function () {
-                const productId = window.jQuery(this).val();
-                if (!productId) return;
-                addProductToGroup(group, productId);
-            });
-
-            window.jQuery(picker).on("select2:select", function (event) {
-                const productId = event.params && event.params.data ? event.params.data.id : window.jQuery(this).val();
-                if (!productId) return;
-                addProductToGroup(group, productId);
-            });
+        if (variations.length === 0) {
+            fields.innerHTML = "";
+            noVariations.classList.remove("d-none");
             return;
         }
 
-        picker.addEventListener("change", function () {
-            const productId = picker.value;
-            if (!productId) return;
-            addProductToGroup(group, productId);
+        noVariations.classList.add("d-none");
+        fields.innerHTML = variations
+            .map(function (variation, vIndex) {
+                const options = variation.values || [];
+                const defaultLabel = options[0] ? options[0].label || options[0].level || "" : "";
+                return `
+                    <div class="form-group mb-2">
+                        <label class="input-label mb-1">${escapeHtml(variation.name)}</label>
+                        <select class="form-control promo-picker-variation-select" data-variation-name="${escapeHtml(variation.name)}" data-variation-index="${vIndex}" required>
+                            ${options
+                                .map(function (option) {
+                                    const label = option.label || option.level || "";
+                                    return `<option value="${escapeHtml(label)}" ${label === defaultLabel ? "selected" : ""}>${escapeHtml(label)}</option>`;
+                                })
+                                .join("")}
+                        </select>
+                    </div>
+                `;
+            })
+            .join("");
+    }
+
+    function collectPickerVariations() {
+        const variations = [];
+        $all(".promo-picker-variation-select").forEach(function (select) {
+            variations.push({
+                name: select.getAttribute("data-variation-name") || "",
+                values: { label: [select.value] },
+            });
         });
+        return variations;
+    }
+
+    function addProductToGroup(group, details, savedVariations) {
+        const container = document.getElementById(`group-${group}-items`);
+        if (!container) return;
+
+        const index = groupCounters[group]++;
+        const html = buildGroupItemHtml(
+            group,
+            index,
+            details.product_name,
+            details.product_id,
+            details.product_image,
+            details.variations,
+            savedVariations || collectPickerVariations()
+        );
+        container.insertAdjacentHTML("beforeend", html);
+    }
+
+    function handleProductCardClick(productId) {
+        const product = products.find(function (item) {
+            return String(item.id) === String(productId);
+        });
+        if (!product) return;
+
+        selectedProduct = product;
+
+        loadProductDetails(productId)
+            .then(function (details) {
+                selectedProductDetails = details;
+                renderVariationStep(details);
+                showPickerStep("variations");
+            })
+            .catch(function () {
+                alert(window.translateLoadFailed || "Could not load product details. Please try again.");
+            });
+    }
+
+    function confirmAddProduct() {
+        if (!activeGroup || !selectedProductDetails) return;
+
+        addProductToGroup(activeGroup, selectedProductDetails, collectPickerVariations());
+        closeProductPicker();
     }
 
     function countGroupItems(group) {
@@ -246,26 +323,22 @@
     function validatePromoForm(event) {
         event.preventDefault();
         const form = event.target;
+        const groupOneCount = countGroupItems(1);
+        const groupTwoCount = countGroupItems(2);
 
-        Promise.all([flushPickerSelection(1), flushPickerSelection(2)]).then(function () {
-            const groupOneCount = countGroupItems(1);
-            const groupTwoCount = countGroupItems(2);
+        if (groupOneCount < 1 || groupTwoCount < 1) {
+            alert(
+                window.translateGroupProductsRequired ||
+                    "Please add at least one product to Group 1 and Group 2."
+            );
+            return;
+        }
 
-            if (groupOneCount < 1 || groupTwoCount < 1) {
-                alert(
-                    window.translateGroupProductsRequired ||
-                        "Please add at least one product to Group 1 and Group 2. Select a product, click Add, and confirm it appears in the list below."
-                );
-                return;
-            }
-
-            form.removeEventListener("submit", validatePromoForm);
-            form.submit();
-        });
+        form.removeEventListener("submit", validatePromoForm);
+        form.submit();
     }
 
     document.addEventListener("DOMContentLoaded", function () {
-        initSelect2();
         updatePromotionTypeFields();
         toggleOrderTypeOptions();
 
@@ -296,15 +369,45 @@
             input.addEventListener("change", toggleOrderTypeOptions);
         });
 
-        bindProductPicker(1);
-        bindProductPicker(2);
+        $all(".open-product-picker").forEach(function (button) {
+            button.addEventListener("click", function () {
+                openProductPicker(Number(button.getAttribute("data-group")));
+            });
+        });
+
+        const searchInput = $("#promo-picker-search");
+        if (searchInput) {
+            searchInput.addEventListener("input", function () {
+                renderProductGrid(searchInput.value);
+            });
+        }
 
         document.addEventListener("click", function (event) {
+            const productCard = event.target.closest(".promo-picker-product");
+            if (productCard) {
+                handleProductCardClick(productCard.getAttribute("data-product-id"));
+                return;
+            }
+
             const removeButton = event.target.closest(".remove-group-item");
-            if (!removeButton) return;
-            const item = removeButton.closest(".promo-group-item");
-            if (item) item.remove();
+            if (removeButton) {
+                const item = removeButton.closest(".promo-group-item");
+                if (item) item.remove();
+                return;
+            }
         });
+
+        const backButton = $("#promo-picker-back");
+        if (backButton) {
+            backButton.addEventListener("click", function () {
+                showPickerStep("products");
+            });
+        }
+
+        const confirmButton = $("#promo-picker-confirm-add");
+        if (confirmButton) {
+            confirmButton.addEventListener("click", confirmAddProduct);
+        }
 
         const form = document.getElementById("promo-banner-form");
         if (form) {

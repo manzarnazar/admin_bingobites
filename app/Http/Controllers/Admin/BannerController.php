@@ -30,7 +30,7 @@ class BannerController extends Controller
     public function list(Request $request): Renderable
     {
         $search = $request->search;
-        $products = $this->product->orderBy('name')->get(['id', 'name']);
+        $products = $this->productsForPicker();
         $paymentMethods = $this->paymentMethodOptions();
 
         $banners = $this->banner
@@ -74,7 +74,7 @@ class BannerController extends Controller
         }
 
         $banner = $query->findOrFail($id);
-        $products = $this->product->orderBy('name')->get(['id', 'name']);
+        $products = $this->productsForPicker();
         $paymentMethods = $this->paymentMethodOptions();
 
         return view('admin-views.banner.edit', compact('banner', 'products', 'paymentMethods'));
@@ -119,12 +119,21 @@ class BannerController extends Controller
     {
         $product = $this->product->findOrFail($productId);
         $variations = json_decode($product->variations ?? '[]', true) ?: [];
+        $variations = array_values(array_filter($variations, function ($variation) {
+            return is_array($variation) && !isset($variation['price']);
+        }));
 
         return response()->json([
             'product_id' => $product->id,
             'product_name' => $product->name,
+            'product_image' => $product->imageFullPath,
             'variations' => $variations,
         ]);
+    }
+
+    private function productsForPicker()
+    {
+        return $this->product->orderBy('name')->get(['id', 'name', 'image']);
     }
 
     private function paymentMethodOptions(): array
