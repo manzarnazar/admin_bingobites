@@ -313,6 +313,9 @@ class OrderController extends Controller
 
             $this->order->insertGetId($order);
 
+            $promoService = app(PromoOrderService::class);
+            $promotionBanner = $amountData['promotion_banner'] ?? null;
+
             foreach ($request['cart'] as $c) {
                 $product = $this->product->find($c['product_id']);
                 $branchProduct = $this->product_by_branch->where(['product_id' => $c['product_id'], 'branch_id' => $request['branch_id']])->first();
@@ -358,6 +361,35 @@ class OrderController extends Controller
                     selectedAddonIds: $c['add_on_ids'] ?? [],
                     selectedAddonQtys: $c['add_on_qtys'] ?? [],
                 );
+
+                $promotionRole = $c['promotion_role'] ?? null;
+                $isPromoLine = $promotionBanner
+                    && (int) ($c['promotion_id'] ?? 0) === (int) $promotionBanner->id;
+                $addonPrice = (float) ($normalizedAddons['total_add_on_price'] ?? 0);
+
+                if ($isPromoLine && !$promoService->shouldChargeAddons($promotionBanner, $promotionRole)) {
+                    $normalizedAddons['add_on_ids'] = [];
+                    $normalizedAddons['add_on_qtys'] = [];
+                    $normalizedAddons['add_on_prices'] = [];
+                    $normalizedAddons['add_on_taxes'] = [];
+                    $normalizedAddons['add_on_tax_amount'] = 0;
+                    $normalizedAddons['total_add_on_price'] = 0;
+                    $addonPrice = 0;
+                }
+
+                if ($isPromoLine && $promotionRole === 'reward') {
+                    if (!$promotionBanner->relationLoaded('groupItems')) {
+                        $promotionBanner->load('groupItems');
+                    }
+
+                    $rewardLineAmount = (($price - $discountOnProduct) * $c['quantity']) + $addonPrice;
+                    $linePromoDiscount = $promoService->calculateRewardDiscount(
+                        $promotionBanner,
+                        $rewardLineAmount,
+                        $promotionBanner->groupItems->where('group_number', 2)
+                    );
+                    $discountOnProduct += $linePromoDiscount / max((int) $c['quantity'], 1);
+                }
 
                 $orderDetail = [
                     'order_id' => $orderId,

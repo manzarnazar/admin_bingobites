@@ -402,6 +402,15 @@
 
                                     <dt class="col-6">
                                         <div class="d-flex max-w220 ml-auto">
+                                            <span>{{ translate('Promotion discount') }}</span>
+                                            <span>:</span>
+                                        </div>
+                                    </dt>
+                                    <dd class="col-6 text-dark text-right">
+                                        - {{ Helpers::set_symbol($order['promotion_discount_amount'] ?? 0) }}</dd>
+
+                                    <dt class="col-6">
+                                        <div class="d-flex max-w220 ml-auto">
                                             <span>{{translate('extra discount')}} </span>
                                             <span>:</span>
                                         </div>
@@ -434,7 +443,7 @@
                                         </div>
                                     </dt>
                                     <dd class="col-6 text-dark text-right">
-                                        {{ Helpers::set_symbol($subTotal = $subTotal+$totalTax+$addOnsCost-$totalDisOnPro + $addOnsTaxCost - $order['coupon_discount_amount'] - $order['extra_discount'] - $order['referral_discount']) }}</dd>
+                                        {{ Helpers::set_symbol($subTotal = $subTotal+$totalTax+$addOnsCost-$totalDisOnPro + $addOnsTaxCost - $order['coupon_discount_amount'] - ($order['promotion_discount_amount'] ?? 0) - $order['extra_discount'] - $order['referral_discount']) }}</dd>
 
                                     <dt class="col-6">
                                         <div class="d-flex max-w220 ml-auto">

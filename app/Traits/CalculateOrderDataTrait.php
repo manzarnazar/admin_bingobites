@@ -18,6 +18,22 @@ use function App\CentralLogics\translate;
 
 trait CalculateOrderDataTrait
 {
+    protected function resolvePromotionIdFromCart(array $cart): ?int
+    {
+        $promotionIds = [];
+
+        foreach ($cart as $cartItem) {
+            $promotionId = (int) ($cartItem['promotion_id'] ?? 0);
+            if ($promotionId > 0) {
+                $promotionIds[$promotionId] = true;
+            }
+        }
+
+        $uniqueIds = array_keys($promotionIds);
+
+        return count($uniqueIds) === 1 ? (int) $uniqueIds[0] : null;
+    }
+
     protected function calculateOrderAmount(
         array $cart,
         int|string $userId,
@@ -46,6 +62,10 @@ trait CalculateOrderDataTrait
         $promoService = app(PromoOrderService::class);
         $banner = null;
         $promotionDiscountAmount = 0;
+
+        if (!$promotionId) {
+            $promotionId = $this->resolvePromotionIdFromCart($cart);
+        }
 
         if ($promotionId) {
             $banner = $promoService->findActiveBanner($promotionId);
