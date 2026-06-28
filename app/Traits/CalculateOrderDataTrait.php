@@ -230,27 +230,23 @@ trait CalculateOrderDataTrait
             $totalDiscountOnProduct += $discountOnProduct * $cartItem['quantity'];
 
             if ($isPromoLine && $promotionRole === 'reward') {
-                $rewardLineAmount = (($price - $discountOnProduct) * $cartItem['quantity']) + $addonPrice;
+                $basePrice = $branchProduct
+                    ? (float) $branchProduct['price']
+                    : (float) $product->price;
+                $orderProductVariations = $branchProduct
+                    ? Helpers::resolveOrderProductVariations($product, $branchProduct)
+                    : Helpers::resolveOrderProductVariations($product, null);
+                $groupItem = $promoService->findMatchingGroupItem($banner, 2, $cartItem);
+                $presetVariations = $groupItem?->variations ?? [];
 
-                if (!$promoService->shouldChargeAddons($banner, $promotionRole)) {
-                    $basePrice = $branchProduct
-                        ? (float) $branchProduct['price']
-                        : (float) $product->price;
-                    $orderProductVariations = $branchProduct
-                        ? Helpers::resolveOrderProductVariations($product, $branchProduct)
-                        : Helpers::resolveOrderProductVariations($product, null);
-                    $groupItem = $promoService->findMatchingGroupItem($banner, 2, $cartItem);
-                    $presetVariations = $groupItem?->variations ?? [];
-
-                    $rewardLineAmount = $promoService->computePromoDiscountableLineAmount(
-                        $basePrice,
-                        $orderProductVariations,
-                        $cartItem['variations'] ?? [],
-                        $presetVariations,
-                        $discountData,
-                        (int) $cartItem['quantity']
-                    );
-                }
+                $rewardLineAmount = $promoService->computePromoDiscountableLineAmount(
+                    $basePrice,
+                    $orderProductVariations,
+                    $cartItem['variations'] ?? [],
+                    $presetVariations,
+                    $discountData,
+                    (int) $cartItem['quantity']
+                );
 
                 $linePromoDiscount = $promoService->calculateRewardDiscount(
                     $banner,
