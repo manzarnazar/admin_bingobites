@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\CentralLogics\Helpers;
 use App\Http\Controllers\Controller;
+use App\Model\Banner;
 use App\Model\Branch;
 use App\Model\ChefBranch;
 use App\Model\Order;
@@ -213,6 +214,18 @@ class KitchenController extends Controller
 
         $order = $this->order->with('table')->where(['id' => $request->order_id])->first();
         if (isset($order)) {
+            if ($order->promotion_id) {
+                $banner = Banner::find($order->promotion_id);
+                if ($banner) {
+                    $order->setAttribute('promotion_type', $banner->promotion_type);
+                    $order->setAttribute('promotion_title', $banner->headline ?? $banner->title);
+                    $order->setAttribute(
+                        'promotion_discount_value',
+                        $banner->reward_discount_value
+                    );
+                }
+            }
+
             $details = $this->orderDetail->where(['order_id' => $order->id])->get();
             $details = isset($details) ? Helpers::order_details_formatter($details) : null;
 

@@ -1308,6 +1308,38 @@ class Helpers
                     $detail['add_on_taxes'] = $fallbackTaxes;
                 }
 
+                $addonIds = array_values((array) ($detail['add_on_ids'] ?? []));
+                if (!empty($addonIds)) {
+                    $addonQtys = array_values((array) ($detail['add_on_qtys'] ?? []));
+                    $addonPrices = array_values((array) ($detail['add_on_prices'] ?? []));
+                    $addonTaxes = array_values((array) ($detail['add_on_taxes'] ?? []));
+
+                    if (count($addonQtys) !== count($addonIds)) {
+                        $rebuiltQtys = [];
+                        foreach ($addonIds as $idx => $addonId) {
+                            $rebuiltQtys[] = max(1, (int) ($addonQtys[$idx] ?? 1));
+                        }
+                        $detail['add_on_qtys'] = $rebuiltQtys;
+                    }
+
+                    if (count($addonPrices) !== count($addonIds)) {
+                        $addonsById = AddOn::whereIn('id', $addonIds)->get()->keyBy('id');
+                        $rebuiltPrices = [];
+                        $rebuiltTaxes = [];
+                        foreach ($addonIds as $idx => $addonId) {
+                            $addon = $addonsById->get((int) $addonId);
+                            $price = $addon ? (float) $addon->price : (float) ($addonPrices[$idx] ?? 0);
+                            $tax = $addon
+                                ? ((float) $addon->price * (float) $addon->tax) / 100
+                                : (float) ($addonTaxes[$idx] ?? 0);
+                            $rebuiltPrices[] = $price;
+                            $rebuiltTaxes[] = $tax;
+                        }
+                        $detail['add_on_prices'] = $rebuiltPrices;
+                        $detail['add_on_taxes'] = $rebuiltTaxes;
+                    }
+                }
+
                 if(!isset($detail['reviews_count'])) {
                     $detail['review_count'] = Review::where(['order_id' => $detail['order_id'], 'product_id' => $detail['product_id']])->count();
                 }
