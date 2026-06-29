@@ -74,7 +74,7 @@ class PromoOrderService
         $paidLines = $promoLines->filter(fn ($line) => ($line['promotion_role'] ?? null) === 'paid');
         $rewardLines = $promoLines->filter(fn ($line) => ($line['promotion_role'] ?? null) === 'reward');
 
-        if ($banner->promotion_type === Banner::PROMOTION_TYPE_PERCENT_OFF) {
+        if ($this->usesSingleGroupDiscount($banner)) {
             if ($paidLines->count() !== 1 || $rewardLines->count() !== 0) {
                 throw ValidationException::withMessages([
                     'promotion_id' => [translate('Invalid promotion cart items')],
@@ -203,6 +203,27 @@ class PromoOrderService
         ksort($normalized);
 
         return $normalized;
+    }
+
+    public function hasRewardGroup(Banner $banner): bool
+    {
+        $groupItems = $banner->relationLoaded('groupItems')
+            ? $banner->groupItems
+            : $banner->groupItems()->get();
+
+        return $groupItems->where('group_number', 2)->isNotEmpty();
+    }
+
+    public function usesSingleGroupDiscount(Banner $banner): bool
+    {
+        if (!in_array($banner->promotion_type, [
+            Banner::PROMOTION_TYPE_PERCENT_OFF,
+            Banner::PROMOTION_TYPE_FIXED_AMOUNT,
+        ], true)) {
+            return false;
+        }
+
+        return !$this->hasRewardGroup($banner);
     }
 
     public function calculateRewardDiscount(Banner $banner, float $rewardLineAmount, Collection $groupTwoItems): float

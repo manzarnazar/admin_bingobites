@@ -259,7 +259,7 @@ trait CalculateOrderDataTrait
             if (
                 $isPromoLine
                 && $promotionRole === 'paid'
-                && $banner->promotion_type === Banner::PROMOTION_TYPE_PERCENT_OFF
+                && $promoService->usesSingleGroupDiscount($banner)
             ) {
                 $basePrice = $branchProduct
                     ? (float) $branchProduct['price']

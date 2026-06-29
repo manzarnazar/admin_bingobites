@@ -102,21 +102,28 @@
             label.textContent = "Fixed Discount Amount";
         }
 
+        const optionalRewardGroupType =
+            type === "percent_off" || type === "fixed_amount";
+
         if (groupTwoCard) {
-            if (type === "percent_off") {
-                groupTwoCard.style.display = "none";
-            } else {
-                groupTwoCard.style.display = "";
-            }
+            groupTwoCard.style.display = "";
+        }
+
+        const groupTwoHelp = $("#group-2-help");
+        if (groupTwoHelp) {
+            groupTwoHelp.textContent = optionalRewardGroupType
+                ? window.translateGroupTwoOptionalHelp ||
+                  "Optional. Leave empty to apply the discount on a single item from Group 1."
+                : window.translateGroupTwoRewardHelp ||
+                  "Customer receives the offer on one of these";
         }
 
         if (groupOneHelp) {
-            groupOneHelp.textContent =
-                type === "percent_off"
-                    ? window.translateGroupOnePercentOffHelp ||
-                      "Customer selects one of these and receives the discount."
-                    : window.translateGroupOneBuyHelp ||
-                      "Customer buys one of these";
+            groupOneHelp.textContent = optionalRewardGroupType
+                ? window.translateGroupOneDiscountHelp ||
+                  "Customer selects one of these. Add Group 2 items only for buy-one-get-discount-on-second promos."
+                : window.translateGroupOneBuyHelp ||
+                  "Customer buys one of these";
         }
     }
 
@@ -384,7 +391,7 @@
         const groupOneCount = countGroupItems(1);
         const groupTwoCount = countGroupItems(2);
         const promotionType = getPromotionType();
-        const requiresGroupTwo = promotionType !== "percent_off";
+        const requiresGroupTwo = promotionType === "bogo";
 
         if (groupOneCount < 1 || (requiresGroupTwo && groupTwoCount < 1)) {
             alert(

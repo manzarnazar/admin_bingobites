@@ -68,7 +68,10 @@ class BannerPromoService
             'group_1' => 'required|array|min:1',
             'group_1.*.product_id' => 'required|integer|exists:products,id',
             'group_1.*.variations' => 'nullable|array',
-            'group_2' => $request->input('promotion_type') === 'percent_off'
+            'group_2' => in_array($request->input('promotion_type'), [
+                Banner::PROMOTION_TYPE_PERCENT_OFF,
+                Banner::PROMOTION_TYPE_FIXED_AMOUNT,
+            ], true)
                 ? 'nullable|array'
                 : 'required|array|min:1',
             'group_2.*.product_id' => 'required|integer|exists:products,id',
@@ -175,7 +178,7 @@ class BannerPromoService
             $banner->status = 1;
             $banner->save();
 
-            $this->syncGroupItems($banner, $data['group_1'], $data['group_2']);
+            $this->syncGroupItems($banner, $data['group_1'], $data['group_2'] ?? []);
 
             return $banner;
         });
@@ -193,7 +196,7 @@ class BannerPromoService
             }
             $banner->save();
 
-            $this->syncGroupItems($banner, $data['group_1'], $data['group_2']);
+            $this->syncGroupItems($banner, $data['group_1'], $data['group_2'] ?? []);
 
             return $banner;
         });

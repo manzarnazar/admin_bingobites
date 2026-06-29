@@ -72,7 +72,7 @@
             <div class="col-lg-6" id="promo-group-2-card">
                 <div class="border rounded p-3 h-100">
                     <strong class="d-block">{{ translate('Items Group 2') }}</strong>
-                    <small class="text-muted d-block mb-3">{{ translate('Customer receives the offer on one of these') }}</small>
+                    <small id="group-2-help" class="text-muted d-block mb-3">{{ translate('Customer receives the offer on one of these') }}</small>
                     <button type="button" class="btn btn-primary open-product-picker mb-3" data-group="2">
                         <i class="tio-add"></i> {{ translate('Browse products') }}
                     </button>
