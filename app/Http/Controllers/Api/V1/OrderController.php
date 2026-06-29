@@ -26,6 +26,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
 use function App\CentralLogics\translate;
@@ -426,7 +427,6 @@ class OrderController extends Controller
                 $orderDetail = [
                     'order_id' => $orderId,
                     'product_id' => $c['product_id'],
-                    'promotion_role' => $isPromoLine ? $promotionRole : null,
                     'product_details' => $product,
                     'quantity' => $c['quantity'],
                     'price' => $price,
@@ -443,6 +443,10 @@ class OrderController extends Controller
                     'created_at' => now(),
                     'updated_at' => now()
                 ];
+
+                if (Schema::hasColumn('order_details', 'promotion_role')) {
+                    $orderDetail['promotion_role'] = $isPromoLine ? $promotionRole : null;
+                }
 
                 $this->order_detail->insert($orderDetail);
 
