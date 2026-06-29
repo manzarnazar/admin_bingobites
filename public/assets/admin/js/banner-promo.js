@@ -85,6 +85,8 @@
         const type = getPromotionType();
         const rewardInput = $("#reward-discount-value");
         const label = $("#reward-discount-label");
+        const groupTwoCard = $("#promo-group-2-card");
+        const groupOneHelp = $("#group-1-help");
 
         if (!rewardInput || !label) return;
 
@@ -98,6 +100,23 @@
         } else {
             rewardInput.removeAttribute("readonly");
             label.textContent = "Fixed Discount Amount";
+        }
+
+        if (groupTwoCard) {
+            if (type === "percent_off") {
+                groupTwoCard.style.display = "none";
+            } else {
+                groupTwoCard.style.display = "";
+            }
+        }
+
+        if (groupOneHelp) {
+            groupOneHelp.textContent =
+                type === "percent_off"
+                    ? window.translateGroupOnePercentOffHelp ||
+                      "Customer selects one of these and receives the discount."
+                    : window.translateGroupOneBuyHelp ||
+                      "Customer buys one of these";
         }
     }
 
@@ -364,11 +383,16 @@
         const form = event.target;
         const groupOneCount = countGroupItems(1);
         const groupTwoCount = countGroupItems(2);
+        const promotionType = getPromotionType();
+        const requiresGroupTwo = promotionType !== "percent_off";
 
-        if (groupOneCount < 1 || groupTwoCount < 1) {
+        if (groupOneCount < 1 || (requiresGroupTwo && groupTwoCount < 1)) {
             alert(
-                window.translateGroupProductsRequired ||
-                    "Please add at least one product to Group 1 and Group 2."
+                requiresGroupTwo
+                    ? window.translateGroupProductsRequired ||
+                          "Please add at least one product to Group 1 and Group 2."
+                    : window.translateGroupOneProductRequired ||
+                          "Please add at least one product to Group 1."
             );
             return;
         }
