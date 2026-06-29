@@ -328,6 +328,10 @@ class PromoOrderService
                 }
 
                 $key = $cartVariation['name'] . '::' . $label;
+                if ($this->isAddonVariationOption($productVariation, $option)) {
+                    continue;
+                }
+
                 if ($isSingleChoice || isset($presetKeys[$key])) {
                     $includedVariationPrice += (float) ($option['optionPrice'] ?? 0) * $count;
                 }
@@ -385,6 +389,21 @@ class PromoOrderService
         );
 
         return $discountedPerUnit * $quantity;
+    }
+
+    private function isAddonVariationGroupName(string $variationName): bool
+    {
+        return str_contains(strtolower(trim($variationName)), 'addon');
+    }
+
+    private function isAddonVariationOption(array $productVariation, array $option): bool
+    {
+        if (!empty($option['addon_id'])) {
+            return true;
+        }
+
+        $variationName = (string) ($productVariation['name'] ?? '');
+        return $this->isAddonVariationGroupName($variationName);
     }
 
     private function buildPresetVariationKeys(array $presetVariations): array
