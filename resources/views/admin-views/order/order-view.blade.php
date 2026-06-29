@@ -339,7 +339,12 @@
                                     </td>
                                     <td>
                                         @php($amount=$detail['price']*$detail['quantity'])
-                                        {{Helpers::set_symbol($amount)}}
+                                        @php($lineTotalAfterDiscount = $amount - ($detail['discount_on_product']*$detail['quantity']) + ($detail['tax_amount']*$detail['quantity']))
+                                        @if(($detail['promotion_role'] ?? null) === 'reward' && $lineTotalAfterDiscount <= 0.01)
+                                            <span class="font-weight-semibold text-success">{{ translate('FREE') }}</span>
+                                        @else
+                                            {{Helpers::set_symbol($amount)}}
+                                        @endif
                                     </td>
                                     <td>
                                         @php($totDiscount = $detail['discount_on_product']*$detail['quantity'])
@@ -394,21 +399,21 @@
 
                                     <dt class="col-6">
                                         <div class="d-flex max-w220 ml-auto">
-                                            <span>{{translate('coupon')}} {{translate('discount')}}</span>
-                                            <span>:</span>
-                                        </div>
-                                    </dt>
-                                    <dd class="col-6 text-dark text-right">
-                                        - {{ Helpers::set_symbol($order['coupon_discount_amount']) }}</dd>
-
-                                    <dt class="col-6">
-                                        <div class="d-flex max-w220 ml-auto">
-                                            <span>{{ translate('Promotion discount') }}</span>
+                                            <span>{{ translate('Promotion') }}</span>
                                             <span>:</span>
                                         </div>
                                     </dt>
                                     <dd class="col-6 text-dark text-right">
                                         - {{ Helpers::set_symbol($order['promotion_discount_amount'] ?? 0) }}</dd>
+
+                                    <dt class="col-6">
+                                        <div class="d-flex max-w220 ml-auto">
+                                            <span>{{ translate('Promotion (Coupon)') }}</span>
+                                            <span>:</span>
+                                        </div>
+                                    </dt>
+                                    <dd class="col-6 text-dark text-right">
+                                        - {{ Helpers::set_symbol($order['coupon_discount_amount']) }}</dd>
 
                                     <dt class="col-6">
                                         <div class="d-flex max-w220 ml-auto">

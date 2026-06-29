@@ -256,6 +256,37 @@ trait CalculateOrderDataTrait
                 $promotionDiscountAmount += $linePromoDiscount;
             }
 
+            if (
+                $isPromoLine
+                && $promotionRole === 'paid'
+                && $banner->promotion_type === Banner::PROMOTION_TYPE_PERCENT_OFF
+            ) {
+                $basePrice = $branchProduct
+                    ? (float) $branchProduct['price']
+                    : (float) $product->price;
+                $orderProductVariations = $branchProduct
+                    ? Helpers::resolveOrderProductVariations($product, $branchProduct)
+                    : Helpers::resolveOrderProductVariations($product, null);
+                $groupItem = $promoService->findMatchingGroupItem($banner, 1, $cartItem);
+                $presetVariations = $groupItem?->variations ?? [];
+
+                $paidLineAmount = $promoService->computePromoDiscountableLineAmount(
+                    $basePrice,
+                    $orderProductVariations,
+                    $cartItem['variations'] ?? [],
+                    $presetVariations,
+                    $discountData,
+                    (int) $cartItem['quantity']
+                );
+
+                $linePromoDiscount = $promoService->calculateRewardDiscount(
+                    $banner,
+                    $paidLineAmount,
+                    $banner->groupItems->where('group_number', 1)
+                );
+                $promotionDiscountAmount += $linePromoDiscount;
+            }
+
             $totalAddonPrice += $addonPrice;
             $totalAddonTax += $addonTaxForThisItem;
 

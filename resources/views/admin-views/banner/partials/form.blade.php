@@ -200,12 +200,6 @@
             </div>
             <div class="col-md-6 col-lg-4">
                 <div class="form-group mb-0">
-                    <label class="input-label" for="max-reward-qty">{{ translate('Maximum reward quantity') }}</label>
-                    <input type="number" min="1" name="max_reward_qty" id="max-reward-qty" class="form-control" value="{{ old('max_reward_qty', $banner?->max_reward_qty ?? 1) }}" required>
-                </div>
-            </div>
-            <div class="col-md-6 col-lg-4">
-                <div class="form-group mb-0">
                     <label class="input-label" for="usage-per-customer">{{ translate('Usage per customer') }}</label>
                     <input type="number" min="1" name="usage_per_customer" id="usage-per-customer" class="form-control" value="{{ old('usage_per_customer', $banner?->usage_per_customer ?? '') }}" placeholder="{{ translate('Unlimited') }}">
                 </div>

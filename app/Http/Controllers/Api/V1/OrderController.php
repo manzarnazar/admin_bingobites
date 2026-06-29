@@ -426,6 +426,7 @@ class OrderController extends Controller
                 $orderDetail = [
                     'order_id' => $orderId,
                     'product_id' => $c['product_id'],
+                    'promotion_role' => $isPromoLine ? $promotionRole : null,
                     'product_details' => $product,
                     'quantity' => $c['quantity'],
                     'price' => $price,

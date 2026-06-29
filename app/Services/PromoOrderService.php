@@ -74,6 +74,22 @@ class PromoOrderService
         $paidLines = $promoLines->filter(fn ($line) => ($line['promotion_role'] ?? null) === 'paid');
         $rewardLines = $promoLines->filter(fn ($line) => ($line['promotion_role'] ?? null) === 'reward');
 
+        if ($banner->promotion_type === Banner::PROMOTION_TYPE_PERCENT_OFF) {
+            if ($paidLines->count() !== 1 || $rewardLines->count() !== 0) {
+                throw ValidationException::withMessages([
+                    'promotion_id' => [translate('Invalid promotion cart items')],
+                ]);
+            }
+
+            if (!$this->lineMatchesGroupItem($banner, 1, $paidLines->first())) {
+                throw ValidationException::withMessages([
+                    'promotion_id' => [translate('Selected item is not eligible for this promotion')],
+                ]);
+            }
+
+            return;
+        }
+
         if ($paidLines->count() !== 1 || $rewardLines->count() !== 1) {
             throw ValidationException::withMessages([
                 'promotion_id' => [translate('Invalid promotion cart items')],
@@ -83,7 +99,8 @@ class PromoOrderService
         $paidLine = $paidLines->first();
         $rewardLine = $rewardLines->first();
 
-        if ((int) ($rewardLine['quantity'] ?? 1) > $banner->max_reward_qty) {
+        $maxRewardQty = max(1, (int) ($banner->max_reward_qty ?? 1));
+        if ((int) ($rewardLine['quantity'] ?? 1) > $maxRewardQty) {
             throw ValidationException::withMessages([
                 'promotion_id' => [translate('Maximum reward quantity exceeded')],
             ]);

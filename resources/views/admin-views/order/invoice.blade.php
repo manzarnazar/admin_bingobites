@@ -191,7 +191,11 @@
                                 </td>
                                 <td style="width: 28%;padding-right:4px; text-align:right">
                                     @php($amount=($detail['price']-$detail['discount_on_product'])*$detail['quantity'])
-                                    {{ \App\CentralLogics\Helpers::set_symbol($amount) }}
+                                    @if(($detail['promotion_role'] ?? null) === 'reward' && $amount <= 0.01)
+                                        <strong>{{ translate('FREE') }}</strong>
+                                    @else
+                                        {{ \App\CentralLogics\Helpers::set_symbol($amount) }}
+                                    @endif
                                 </td>
                             </tr>
                             @php($subTotal+=$amount)
@@ -211,7 +215,10 @@
                             <dt class="col-6">{{translate('Addon Cost:')}}</dt>
                             <dd class="col-6">{{ \App\CentralLogics\Helpers::set_symbol($addOnsCost) }}</dd>
 
-                            <dt class="col-6">{{translate('Coupon Discount:')}}</dt>
+                            <dt class="col-6">{{translate('Promotion')}}:</dt>
+                            <dd class="col-6">- {{ \App\CentralLogics\Helpers::set_symbol($order['promotion_discount_amount'] ?? 0) }}</dd>
+
+                            <dt class="col-6">{{translate('Promotion (Coupon)')}}:</dt>
                             <dd class="col-6">- {{ \App\CentralLogics\Helpers::set_symbol($order['coupon_discount_amount']) }}</dd>
 
                             <dt class="col-6">{{translate('Extra Discount')}}:</dt>
@@ -229,7 +236,7 @@
                             <dt class="col-6">{{translate('Subtotal:')}}</dt>
 
                             <dd class="col-6">
-                                {{ \App\CentralLogics\Helpers::set_symbol($subTotal+$totalTax+$addOnsCost+$add_ons_tax_cost-$order['coupon_discount_amount']-$order['extra_discount']-$order['referral_discount']) }}
+                                {{ \App\CentralLogics\Helpers::set_symbol($subTotal+$totalTax+$addOnsCost+$add_ons_tax_cost-$order['coupon_discount_amount']-($order['promotion_discount_amount'] ?? 0)-$order['extra_discount']-$order['referral_discount']) }}
                             </dd>
                             <dt class="col-6">{{translate('Delivery Fee:')}}</dt>
                             <dd class="col-6">
@@ -243,7 +250,7 @@
                             </dd>
 
                             <dt class="col-6" style="font-size: 20px">{{translate('Total:')}}</dt>
-                            <dd class="col-6" style="font-size: 20px">{{ \App\CentralLogics\Helpers::set_symbol($subTotal+$del_c+$totalTax+$addOnsCost-$order['coupon_discount_amount']-$order['extra_discount']-$order['referral_discount']+$add_ons_tax_cost) }}</dd>
+                            <dd class="col-6" style="font-size: 20px">{{ \App\CentralLogics\Helpers::set_symbol($subTotal+$del_c+$totalTax+$addOnsCost-$order['coupon_discount_amount']-($order['promotion_discount_amount'] ?? 0)-$order['extra_discount']-$order['referral_discount']+$add_ons_tax_cost) }}</dd>
 
                             <!-- partial payment-->
                             @if ($order->order_partial_payments->isNotEmpty())

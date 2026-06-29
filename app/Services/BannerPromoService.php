@@ -45,7 +45,7 @@ class BannerPromoService
 
     public function validatePromoRequest(Request $request): array
     {
-        return $request->validate([
+        $rules = [
             'title' => 'required|max:255',
             'headline' => 'required|max:255',
             'description' => 'nullable|max:1000',
@@ -60,7 +60,7 @@ class BannerPromoService
             'payment_methods.*' => 'string',
             'once_per_customer' => 'nullable|boolean',
             'customer_eligibility' => 'nullable|in:any,new,returned',
-            'max_reward_qty' => 'required|integer|min:1',
+            'max_reward_qty' => 'nullable|integer|min:1',
             'usage_per_customer' => 'nullable|integer|min:1',
             'total_usage_limit' => 'nullable|integer|min:1',
             'start_date' => 'nullable|date',
@@ -68,10 +68,14 @@ class BannerPromoService
             'group_1' => 'required|array|min:1',
             'group_1.*.product_id' => 'required|integer|exists:products,id',
             'group_1.*.variations' => 'nullable|array',
-            'group_2' => 'required|array|min:1',
+            'group_2' => $request->input('promotion_type') === 'percent_off'
+                ? 'nullable|array'
+                : 'required|array|min:1',
             'group_2.*.product_id' => 'required|integer|exists:products,id',
             'group_2.*.variations' => 'nullable|array',
-        ]);
+        ];
+
+        return $request->validate($rules);
     }
 
     public function fillBannerFromRequest(Banner $banner, Request $request): void
@@ -94,7 +98,7 @@ class BannerPromoService
             : null;
         $banner->once_per_customer = $request->boolean('once_per_customer');
         $banner->customer_eligibility = $request->input('customer_eligibility', 'any');
-        $banner->max_reward_qty = (int) $request->max_reward_qty;
+        $banner->max_reward_qty = max(1, (int) ($request->input('max_reward_qty', 1) ?: 1));
         $banner->usage_per_customer = $request->filled('usage_per_customer')
             ? (int) $request->usage_per_customer
             : null;
