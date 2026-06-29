@@ -223,6 +223,8 @@ class KitchenController extends Controller
                         'promotion_discount_value',
                         $banner->reward_discount_value
                     );
+                    $order->setAttribute('charge_paid_addons', (bool) $banner->charge_paid_addons);
+                    $order->setAttribute('charge_reward_addons', (bool) $banner->charge_reward_addons);
                 }
             }
 
