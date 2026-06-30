@@ -4,6 +4,7 @@ namespace App\Traits;
 
 use App\CentralLogics\Helpers;
 use App\Model\Coupon;
+use App\Model\Banner;
 use App\Model\Order;
 use App\Model\Product;
 use App\Model\ProductByBranch;
@@ -297,8 +298,10 @@ trait CalculateOrderDataTrait
 
         }
 
-        if ($banner && !$promoService->meetsMinimumSpend($banner, $promoCartSubtotal)) {
-            $promotionDiscountAmount = 0;
+        if ($banner && $banner->promotion_type === Banner::PROMOTION_TYPE_FIXED_AMOUNT) {
+            $promotionDiscountAmount = $promoService->meetsMinimumSpend($banner, $promoCartSubtotal)
+                ? min((float) $banner->reward_discount_value, $promoCartSubtotal)
+                : 0;
         }
 
         $totalPriceForCalculation = (($totalProductPrice - $totalDiscountOnProduct - $promotionDiscountAmount) + $totalAddonPrice);
