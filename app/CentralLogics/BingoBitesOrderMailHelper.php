@@ -2,7 +2,6 @@
 
 namespace App\CentralLogics;
 
-use App\Model\AddOn;
 use App\Model\Banner;
 use App\Model\CustomerAddress;
 use App\Model\Order;
@@ -191,27 +190,40 @@ class BingoBitesOrderMailHelper
                 continue;
             }
 
-            $productDetails = json_decode($detail->product_details, true);
-            $name = $detail->product?->name ?? ($productDetails['name'] ?? 'Item');
+            $productDetails = json_decode($detail->product_details, true) ?: [];
+            $productVariations = self::resolveProductVariationsForDetail($detail, $productDetails);
+
+            $variationText = PromoMailPricing::buildNonAddonVariationText(
+                $detail->variation,
+                $productDetails,
+                $productVariations
+            );
+            $addonLines = PromoMailPricing::formatAddonLinesForDisplay(
+                PromoMailPricing::buildMailAddonLines(
+                    $detail,
+                    $productDetails,
+                    $productVariations
+                )
+            );
+            $addonParts = array_map(fn (array $line) => $line['display'], $addonLines);
+
             $addOnQtys = json_decode($detail->add_on_qtys, true) ?? [];
             $addOnPrices = json_decode($detail->add_on_prices, true) ?? [];
             $addOnTaxes = json_decode($detail->add_on_taxes, true) ?? [];
             $addOnIds = json_decode($detail->add_on_ids, true) ?? [];
 
-            $variationText = self::formatVariationText($detail->variation);
-            $addonParts = [];
             $lineAddonCost = 0.0;
             $lineAddonTax = 0.0;
 
             foreach ($addOnIds as $key => $id) {
-                $addon = AddOn::find($id);
                 $qty = $addOnQtys[$key] ?? 1;
                 $price = (float) ($addOnPrices[$key] ?? 0);
                 $tax = (float) ($addOnTaxes[$key] ?? 0);
-                $addonParts[] = ($addon?->name ?? 'Add-on') . ($qty > 1 ? " x{$qty}" : '');
                 $lineAddonCost += $price * $qty;
                 $lineAddonTax += $tax * $qty;
             }
+
+            $name = $detail->product?->name ?? ($productDetails['name'] ?? 'Item');
 
             $grossLine = (float) $detail->price * (int) $detail->quantity;
             $productDiscount = (float) $detail->discount_on_product * (int) $detail->quantity;
@@ -224,7 +236,8 @@ class BingoBitesOrderMailHelper
                 'display_name' => ucwords(strtolower($name)),
                 'variation_text' => $variationText,
                 'addon_text' => implode(', ', $addonParts),
-                'display_detail' => trim(implode(', ', array_filter([$variationText, implode(', ', $addonParts)]))),
+                'addon_lines' => $addonLines,
+                'display_detail' => $variationText ?: '-',
                 'gross_price' => $grossLine,
                 'product_discount' => $productDiscount,
                 'line_price' => $netLine,
@@ -372,6 +385,7 @@ class BingoBitesOrderMailHelper
 
             if ($promotionRole && !$promoService->shouldChargeAddons($banner, $promotionRole)) {
                 $addonCost = 0.0;
+                $item['addon_lines'] = [];
             }
 
             $rawPromoDiscount = PromoMailPricing::computeRawPromoLineDiscount(
@@ -407,43 +421,6 @@ class BingoBitesOrderMailHelper
                 (float) ($item['promo_line_discount'] ?? 0)
             );
         }, $pricedItems);
-    }
-
-    private static function formatVariationText(?string $variationJson): string
-    {
-        if (!$variationJson) {
-            return '';
-        }
-
-        $variations = json_decode($variationJson, true);
-        if (!is_array($variations) || count($variations) === 0) {
-            return '';
-        }
-
-        $parts = [];
-        foreach ($variations as $variation) {
-            if (isset($variation['name'], $variation['values']) && is_array($variation['values'])) {
-                foreach ($variation['values'] as $value) {
-                    $parts[] = $value['label'] ?? '';
-                }
-            } elseif (is_array($variation)) {
-                foreach ($variation as $key => $val) {
-                    if (is_string($key) && !is_array($val)) {
-                        $parts[] = $val;
-                    }
-                }
-            }
-        }
-
-        if (empty($parts) && isset($variations[0]) && is_array($variations[0])) {
-            foreach ($variations[0] as $val) {
-                if (is_string($val)) {
-                    $parts[] = $val;
-                }
-            }
-        }
-
-        return implode(', ', array_filter($parts));
     }
 
     private static function buildTotals(Order $order, array $lineItems, ?Banner $banner): array

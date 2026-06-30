@@ -211,4 +211,243 @@ class PromoMailPricing
 
         return "Discount ({$name})";
     }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $productAddOns
+     * @return array<int, array{qty: int, group_name: ?string, name: string, unit_price: float, display: string}>
+     */
+    public static function buildMailAddonLines(
+        object $detail,
+        array $productDetails,
+        array $productVariations
+    ): array {
+        $merged = [];
+        $productAddOns = self::normalizeProductAddOns($productDetails);
+
+        $addOnIds = json_decode($detail->add_on_ids ?? '[]', true) ?: [];
+        $addOnQtys = json_decode($detail->add_on_qtys ?? '[]', true) ?: [];
+        $addOnPrices = json_decode($detail->add_on_prices ?? '[]', true) ?: [];
+
+        foreach ($addOnIds as $key => $id) {
+            $addonName = self::resolveAddOnName((int) $id, $productAddOns);
+            $qty = max(1, (int) ($addOnQtys[$key] ?? 1));
+            $unitPrice = (float) ($addOnPrices[$key] ?? 0);
+
+            self::mergeAddonLine($merged, [
+                'qty' => $qty,
+                'group_name' => null,
+                'name' => $addonName,
+                'unit_price' => $unitPrice,
+            ]);
+        }
+
+        $storedVariations = json_decode($detail->variation ?? '[]', true) ?: [];
+        foreach ($storedVariations as $variation) {
+            if (!is_array($variation) || empty($variation['name'])) {
+                continue;
+            }
+
+            $groupName = (string) $variation['name'];
+            foreach ($variation['values'] ?? [] as $value) {
+                if (!is_array($value)) {
+                    continue;
+                }
+
+                if (!self::isAddonVariationOption($productVariations, $productAddOns, $groupName, $value)) {
+                    continue;
+                }
+
+                $label = trim((string) ($value['label'] ?? ''));
+                if ($label === '') {
+                    continue;
+                }
+
+                self::mergeAddonLine($merged, [
+                    'qty' => max(1, (int) ($value['qty'] ?? 1)),
+                    'group_name' => $groupName,
+                    'name' => $label,
+                    'unit_price' => (float) ($value['optionPrice'] ?? 0),
+                ]);
+            }
+        }
+
+        return array_values($merged);
+    }
+
+    /**
+     * @param  array<int, array{qty: int, group_name: ?string, name: string, unit_price: float}>  $lines
+     * @return array<int, array{qty: int, group_name: ?string, name: string, unit_price: float, display: string}>
+     */
+    public static function formatAddonLinesForDisplay(array $lines): array
+    {
+        return array_map(
+            fn (array $line) => array_merge($line, [
+                'display' => self::formatMailAddonLineDisplay($line),
+            ]),
+            $lines
+        );
+    }
+
+    /**
+     * @param  array<string, array<string, mixed>>  $merged
+     * @param  array{qty: int, group_name: ?string, name: string, unit_price: float}  $line
+     */
+    private static function mergeAddonLine(array &$merged, array $line): void
+    {
+        $key = mb_strtolower(trim($line['name']));
+        if ($key === '') {
+            return;
+        }
+
+        if (!isset($merged[$key])) {
+            $merged[$key] = $line;
+
+            return;
+        }
+
+        $merged[$key]['qty'] += $line['qty'];
+        if ($merged[$key]['unit_price'] <= 0 && $line['unit_price'] > 0) {
+            $merged[$key]['unit_price'] = $line['unit_price'];
+        }
+        if (!$merged[$key]['group_name'] && $line['group_name']) {
+            $merged[$key]['group_name'] = $line['group_name'];
+        }
+    }
+
+    /**
+     * @param  array{qty: int, group_name: ?string, name: string, unit_price: float}  $line
+     */
+    public static function formatMailAddonLineDisplay(
+        array $line,
+        ?callable $formatCurrency = null
+    ): string {
+        $qty = max(1, (int) ($line['qty'] ?? 1));
+        $name = (string) ($line['name'] ?? 'Add-on');
+        $formatCurrency ??= fn (float $amount) => Helpers::set_symbol($amount);
+        $priceText = $formatCurrency((float) ($line['unit_price'] ?? 0));
+        $groupName = trim((string) ($line['group_name'] ?? ''));
+
+        if ($groupName !== '') {
+            return "{$qty} x {$groupName} ({$name} - {$priceText})";
+        }
+
+        return "{$qty} x {$name} - {$priceText}";
+    }
+
+    public static function buildNonAddonVariationText(
+        ?string $variationJson,
+        array $productDetails,
+        array $productVariations
+    ): string {
+        if (!$variationJson) {
+            return '';
+        }
+
+        $variations = json_decode($variationJson, true);
+        if (!is_array($variations) || count($variations) === 0) {
+            return '';
+        }
+
+        $productAddOns = self::normalizeProductAddOns($productDetails);
+        $parts = [];
+
+        foreach ($variations as $variation) {
+            if (!is_array($variation) || empty($variation['name'])) {
+                continue;
+            }
+
+            $groupName = (string) $variation['name'];
+            foreach ($variation['values'] ?? [] as $value) {
+                if (!is_array($value)) {
+                    continue;
+                }
+
+                if (self::isAddonVariationOption($productVariations, $productAddOns, $groupName, $value)) {
+                    continue;
+                }
+
+                $label = trim((string) ($value['label'] ?? ''));
+                if ($label === '') {
+                    continue;
+                }
+
+                $qty = max(1, (int) ($value['qty'] ?? 1));
+                $parts[] = $qty > 1 ? "{$label} x{$qty}" : $label;
+            }
+        }
+
+        return implode(', ', $parts);
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $productAddOns
+     */
+    public static function isAddonVariationOption(
+        array $productVariations,
+        array $productAddOns,
+        string $groupName,
+        array $option
+    ): bool {
+        if (self::isAddonVariationGroupName($groupName)) {
+            return true;
+        }
+
+        $label = mb_strtolower(trim((string) ($option['label'] ?? '')));
+        if ($label !== '') {
+            foreach ($productAddOns as $addon) {
+                $addonName = mb_strtolower(trim((string) ($addon['name'] ?? '')));
+                if ($addonName === '') {
+                    continue;
+                }
+
+                if ($label === $addonName || str_contains($label, $addonName)) {
+                    return true;
+                }
+            }
+        }
+
+        $productVariation = collect($productVariations)->firstWhere('name', $groupName);
+        if (($productVariation['type'] ?? '') === 'single') {
+            return false;
+        }
+
+        return ((float) ($option['optionPrice'] ?? 0)) > 0;
+    }
+
+    private static function isAddonVariationGroupName(string $groupName): bool
+    {
+        $normalized = mb_strtolower(trim($groupName));
+
+        return str_contains($normalized, 'addon')
+            || str_contains($normalized, 'add-on')
+            || str_contains($normalized, 'add on');
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    private static function normalizeProductAddOns(array $productDetails): array
+    {
+        $addOns = $productDetails['add_ons'] ?? [];
+
+        if (is_string($addOns)) {
+            $addOns = json_decode($addOns, true) ?: [];
+        }
+
+        return is_array($addOns) ? $addOns : [];
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $productAddOns
+     */
+    private static function resolveAddOnName(int $addOnId, array $productAddOns): string
+    {
+        foreach ($productAddOns as $addon) {
+            if ((int) ($addon['id'] ?? 0) === $addOnId) {
+                return (string) ($addon['name'] ?? 'Add-on');
+            }
+        }
+
+        return 'Add-on';
+    }
 }

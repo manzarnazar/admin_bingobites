@@ -10,7 +10,10 @@
         @foreach ($line_items as $item)
             <tr>
                 <td style="padding:10px 0;border-bottom:1px solid #EEEEEE;font-family:Arial,Helvetica,sans-serif;font-size:14px;color:{{ $black }};line-height:{{ $lh }};">
-                    {{ $item['email_label'] }}
+                    <div>{{ $item['email_label'] }}</div>
+                    @foreach ($item['addon_lines'] ?? [] as $addonLine)
+                        <div style="font-size:12px;color:#666666;margin-top:4px;line-height:{{ $lh }};">{{ $addonLine['display'] }}</div>
+                    @endforeach
                 </td>
                 <td align="right" style="padding:10px 0;border-bottom:1px solid #EEEEEE;font-family:Arial,Helvetica,sans-serif;font-size:14px;color:{{ $black }};white-space:nowrap;line-height:{{ $lh }};">
                     @if ($item['show_free_label'] ?? false)
@@ -74,7 +77,12 @@
             @foreach ($line_items as $index => $item)
                 <tr style="background-color:{{ $index % 2 === 0 ? '#FFFFFF' : '#FAFAFA' }};">
                     <td valign="top" style="font-size:11px;padding:11px 10px;border-bottom:1px solid #EEEEEE;color:{{ $black }};line-height:{{ $lh }};">{{ $item['quantity'] }}</td>
-                    <td valign="top" style="font-size:11px;padding:11px 10px;border-bottom:1px solid #EEEEEE;font-weight:bold;color:{{ $black }};line-height:{{ $lh }};">{{ $item['display_name'] ?? $item['name'] }}</td>
+                    <td valign="top" style="font-size:11px;padding:11px 10px;border-bottom:1px solid #EEEEEE;font-weight:bold;color:{{ $black }};line-height:{{ $lh }};">
+                        <div>{{ $item['display_name'] ?? $item['name'] }}</div>
+                        @foreach ($item['addon_lines'] ?? [] as $addonLine)
+                            <div style="font-size:10px;font-weight:normal;color:{{ $black }};margin-top:4px;line-height:{{ $lh }};">{{ $addonLine['display'] }}</div>
+                        @endforeach
+                    </td>
                     <td valign="top" style="font-size:10px;padding:11px 10px;border-bottom:1px solid #EEEEEE;color:{{ $black }};line-height:{{ $lh }};">{{ $item['display_detail'] ?: '-' }}</td>
                     <td valign="top" align="right" style="font-size:11px;padding:11px 10px;border-bottom:1px solid #EEEEEE;color:{{ $black }};white-space:nowrap;line-height:{{ $lh }};">
                         @if ($item['show_free_label'] ?? false)

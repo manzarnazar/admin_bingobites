@@ -184,6 +184,81 @@ class BingoBitesOrderMailHelperTest extends TestCase
         $this->assertEqualsWithDelta(16.95, $coreAmount, 0.01);
     }
 
+    public function test_format_mail_addon_line_with_group_name(): void
+    {
+        $formatCurrency = fn (float $amount) => '$' . number_format($amount, 2);
+        $display = PromoMailPricing::formatMailAddonLineDisplay([
+            'qty' => 1,
+            'group_name' => 'Burger Addon',
+            'name' => 'Bacon Slice',
+            'unit_price' => 1.5,
+        ], $formatCurrency);
+
+        $this->assertSame('1 x Burger Addon (Bacon Slice - $1.50)', $display);
+    }
+
+    public function test_build_mail_addon_lines_from_variations(): void
+    {
+        $detail = (object) [
+            'add_on_ids' => '[]',
+            'add_on_qtys' => '[]',
+            'add_on_prices' => '[]',
+            'variation' => json_encode([
+                [
+                    'name' => 'Burger Addon',
+                    'values' => [
+                        ['label' => 'Bacon Slice', 'optionPrice' => 1.5, 'qty' => 1],
+                        ['label' => 'Chicken Patty', 'optionPrice' => 4.0, 'qty' => 1],
+                    ],
+                ],
+            ]),
+        ];
+
+        $lines = PromoMailPricing::buildMailAddonLines($detail, [], [
+            [
+                'name' => 'Burger Addon',
+                'type' => 'multi',
+                'values' => [
+                    ['label' => 'Bacon Slice', 'optionPrice' => 1.5],
+                    ['label' => 'Chicken Patty', 'optionPrice' => 4.0],
+                ],
+            ],
+        ]);
+
+        $this->assertCount(2, $lines);
+        $this->assertSame('Bacon Slice', $lines[0]['name']);
+        $this->assertSame('Chicken Patty', $lines[1]['name']);
+        $this->assertSame('Burger Addon', $lines[0]['group_name']);
+    }
+
+    public function test_build_non_addon_variation_text_excludes_modifier_addons(): void
+    {
+        $text = PromoMailPricing::buildNonAddonVariationText(
+            json_encode([
+                [
+                    'name' => 'Size',
+                    'values' => [
+                        ['label' => 'Large', 'optionPrice' => 3, 'qty' => 1],
+                    ],
+                ],
+                [
+                    'name' => 'Burger Addon',
+                    'values' => [
+                        ['label' => 'Bacon Slice', 'optionPrice' => 1.5, 'qty' => 1],
+                    ],
+                ],
+            ]),
+            [],
+            [
+                ['name' => 'Size', 'type' => 'single', 'values' => [['label' => 'Large', 'optionPrice' => 3]]],
+                ['name' => 'Burger Addon', 'type' => 'multi', 'values' => [['label' => 'Bacon Slice', 'optionPrice' => 1.5]]],
+            ]
+        );
+
+        $this->assertSame('Large', $text);
+        $this->assertStringNotContainsString('Bacon', $text);
+    }
+
     public function test_build_promotion_label_for_bogo(): void
     {
         $banner = $this->makeBogoBanner();
