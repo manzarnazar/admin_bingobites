@@ -376,4 +376,49 @@ class BingoBitesOrderMailHelperTest extends TestCase
 
         return $banner;
     }
+
+    private function makeFixedAmountBanner(float $amount, float $minimumSpend = 0): Banner
+    {
+        $banner = new Banner();
+        $banner->promotion_type = Banner::PROMOTION_TYPE_FIXED_AMOUNT;
+        $banner->reward_discount_value = $amount;
+        $banner->minimum_spend = $minimumSpend;
+        $banner->charge_paid_addons = true;
+        $banner->charge_reward_addons = true;
+        $banner->setRelation('groupItems', new Collection());
+
+        return $banner;
+    }
+
+    public function test_fixed_amount_line_keeps_full_price_without_strikethrough(): void
+    {
+        $banner = $this->makeFixedAmountBanner(8, 10);
+        $coreAmount = 15.95;
+
+        $this->assertEquals(0.0, PromoMailPricing::computeRawPromoLineDiscount(
+            $banner,
+            new PromoOrderService(),
+            'paid',
+            $coreAmount,
+            ['product_id' => 1, 'variations' => []]
+        ));
+
+        $line = PromoMailPricing::finalizePromoLineDisplay(
+            ['email_label' => '1 x Classic Chicken Burger'],
+            $banner,
+            'paid',
+            $coreAmount,
+            $coreAmount,
+            7.0,
+            8.0
+        );
+
+        $this->assertEqualsWithDelta(15.95, $line['display_total'], 0.01);
+        $this->assertEqualsWithDelta(15.95, $line['display_original_total'], 0.01);
+        $this->assertFalse($line['show_price_strikethrough']);
+        $this->assertFalse($line['show_free_label']);
+        $this->assertEqualsWithDelta(0.0, $line['promo_line_discount'], 0.01);
+        $this->assertStringContainsString('(PAID ITEM)', $line['email_label']);
+        $this->assertStringNotContainsString('- off', $line['email_label']);
+    }
 }

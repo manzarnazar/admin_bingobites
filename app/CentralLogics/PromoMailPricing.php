@@ -101,6 +101,10 @@ class PromoMailPricing
             return 0.0;
         }
 
+        if ($banner->promotion_type === Banner::PROMOTION_TYPE_FIXED_AMOUNT) {
+            return 0.0;
+        }
+
         $groupNumber = $eligibleRole === 'reward' ? 2 : 1;
         $groupItems = $banner->groupItems->where('group_number', $groupNumber);
 
@@ -147,6 +151,23 @@ class PromoMailPricing
         float $addonCost,
         float $promoLineDiscount
     ): array {
+        if ($banner && $banner->promotion_type === Banner::PROMOTION_TYPE_FIXED_AMOUNT) {
+            $roleSuffix = self::buildPromoEmailSuffix($banner, $promotionRole, $coreAmount, 0.0);
+
+            return array_merge(
+                $item,
+                self::buildLinePriceDisplayFields($coreAmount, $coreAmount, 0.0, 0.0, false),
+                [
+                    'promotion_role' => $promotionRole,
+                    'core_amount' => $coreAmount,
+                    'addon_cost' => $addonCost,
+                    'promo_line_discount' => 0.0,
+                    'promo_label_suffix' => $roleSuffix,
+                    'email_label' => $item['email_label'] . $roleSuffix,
+                ]
+            );
+        }
+
         // PRICE column: core only (base + size/variation after promo). Add-ons live in footer row.
         $displayTotal = max(0, $coreAmount - $promoLineDiscount);
         $isFullyDiscounted = $coreAmount > 0 && $promoLineDiscount >= $coreAmount - 0.01;
@@ -195,9 +216,7 @@ class PromoMailPricing
         }
 
         if ($banner->promotion_type === Banner::PROMOTION_TYPE_FIXED_AMOUNT) {
-            $amount = Helpers::set_symbol((float) ($banner->reward_discount_value ?? 0));
-
-            return " ({$amount} - off)";
+            return $promotionRole === 'paid' ? ' (PAID ITEM)' : '';
         }
 
         $percent = $banner->promotion_type === Banner::PROMOTION_TYPE_BOGO
