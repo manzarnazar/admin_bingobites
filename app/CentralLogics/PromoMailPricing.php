@@ -146,10 +146,8 @@ class PromoMailPricing
         float $addonCost,
         float $promoLineDiscount
     ): array {
-        // Use core_amount (not lineNet) so variation-priced add-ons baked into
-        // stored detail.price are not summed again with addon_cost.
-        $displayCore = max(0, $coreAmount - $promoLineDiscount);
-        $displayTotal = max(0, $displayCore + $addonCost);
+        // PRICE column: core only (base + size/variation after promo). Add-ons live in footer row.
+        $displayTotal = max(0, $coreAmount - $promoLineDiscount);
         $showFreeLabel = $promotionRole === 'reward'
             && $promoLineDiscount >= $coreAmount - 0.01
             && $coreAmount > 0;
@@ -171,15 +169,34 @@ class PromoMailPricing
         ]);
     }
 
+    public static function computeMailCoreAmount(
+        PromoOrderService $promoService,
+        float $basePrice,
+        array $productVariations,
+        array $cartVariations,
+        array $discountData,
+        int $quantity = 1,
+        array $presetVariations = []
+    ): float {
+        return $promoService->computePromoDiscountableLineAmount(
+            $basePrice,
+            $productVariations,
+            $cartVariations,
+            $presetVariations,
+            $discountData,
+            $quantity
+        );
+    }
+
     public static function finalizeNonPromoLineDisplay(array $item): array
     {
-        $displayTotal = (float) $item['line_price'] + (float) $item['addon_cost'];
+        $coreAmount = (float) ($item['core_amount'] ?? $item['line_price']);
 
         return array_merge($item, [
             'promotion_role' => null,
-            'core_amount' => (float) $item['line_price'],
+            'core_amount' => $coreAmount,
             'promo_line_discount' => 0.0,
-            'display_total' => $displayTotal,
+            'display_total' => $coreAmount,
             'show_free_label' => false,
         ]);
     }

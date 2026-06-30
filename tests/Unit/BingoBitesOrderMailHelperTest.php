@@ -17,8 +17,7 @@ class BingoBitesOrderMailHelperTest extends TestCase
 
         $paidCore = 13.95;
         $rewardCore = 13.95;
-        $paidAddon = 8.0;
-        $rewardAddon = 4.0;
+        $paidAddon = 11.0;
         $storedPromotionDiscount = 13.95;
 
         $paidRaw = PromoMailPricing::computeRawPromoLineDiscount(
@@ -52,7 +51,7 @@ class BingoBitesOrderMailHelperTest extends TestCase
             [
                 'email_label' => '1 x Classic Smash Burger',
                 'line_price' => $rewardCore,
-                'addon_cost' => $rewardAddon,
+                'addon_cost' => 0.0,
                 'core_amount' => $rewardCore,
                 '_raw_promo_discount' => $rewardRaw,
                 '_line_net' => $rewardCore,
@@ -73,12 +72,12 @@ class BingoBitesOrderMailHelperTest extends TestCase
             'reward',
             $rewardCore,
             $rewardCore,
-            $rewardAddon,
+            0.0,
             (float) $lines[1]['promo_line_discount']
         );
 
-        $this->assertEqualsWithDelta(21.95, $paidLine['display_total'], 0.01);
-        $this->assertEqualsWithDelta(4.0, $rewardLine['display_total'], 0.01);
+        $this->assertEqualsWithDelta(13.95, $paidLine['display_total'], 0.01);
+        $this->assertEqualsWithDelta(0.0, $rewardLine['display_total'], 0.01);
         $this->assertTrue($rewardLine['show_free_label']);
         $this->assertStringContainsString('(PAID ITEM)', $paidLine['email_label']);
         $this->assertStringContainsString('(FREE ITEM)', $rewardLine['email_label']);
@@ -88,27 +87,28 @@ class BingoBitesOrderMailHelperTest extends TestCase
         $totalPaid = $subtotal + $addons - $storedPromotionDiscount;
 
         $this->assertEqualsWithDelta(27.90, $subtotal, 0.01);
-        $this->assertEqualsWithDelta(12.0, $addons, 0.01);
-        $this->assertEqualsWithDelta(25.95, $totalPaid, 0.01);
+        $this->assertEqualsWithDelta(11.0, $addons, 0.01);
+        $this->assertEqualsWithDelta(24.95, $totalPaid, 0.01);
     }
 
-    public function test_non_promo_line_keeps_legacy_display_total(): void
+    public function test_non_promo_line_shows_core_only_in_price_column(): void
     {
         $item = PromoMailPricing::finalizeNonPromoLineDisplay([
             'email_label' => '1 x Classic Smash Burger',
-            'line_price' => 13.95,
+            'line_price' => 24.95,
             'addon_cost' => 7.0,
+            'core_amount' => 13.95,
             'gross_price' => 13.95,
             'product_discount' => 0.0,
         ]);
 
-        $this->assertEqualsWithDelta(20.95, $item['display_total'], 0.01);
+        $this->assertEqualsWithDelta(13.95, $item['display_total'], 0.01);
+        $this->assertEqualsWithDelta(7.0, $item['addon_cost'], 0.01);
         $this->assertFalse($item['show_free_label']);
         $this->assertNull($item['promotion_role']);
-        $this->assertEqualsWithDelta(13.95, $item['core_amount'], 0.01);
     }
 
-    public function test_paid_line_does_not_double_count_variation_addons_in_price(): void
+    public function test_paid_line_does_not_include_addons_in_price_column(): void
     {
         $paidLine = PromoMailPricing::finalizePromoLineDisplay(
             ['email_label' => '1 x Classic Smash Burger'],
@@ -119,7 +119,8 @@ class BingoBitesOrderMailHelperTest extends TestCase
             0.0
         );
 
-        $this->assertEqualsWithDelta(24.95, $paidLine['display_total'], 0.01);
+        $this->assertEqualsWithDelta(13.95, $paidLine['display_total'], 0.01);
+        $this->assertEqualsWithDelta(11.0, $paidLine['addon_cost'], 0.01);
         $this->assertFalse($paidLine['show_free_label']);
     }
 
@@ -136,6 +137,51 @@ class BingoBitesOrderMailHelperTest extends TestCase
 
         $this->assertEqualsWithDelta(0.0, $rewardLine['display_total'], 0.01);
         $this->assertTrue($rewardLine['show_free_label']);
+    }
+
+    public function test_compute_mail_core_amount_includes_size_variation_only(): void
+    {
+        $promoService = new PromoOrderService();
+        $basePrice = 13.95;
+        $productVariations = [
+            [
+                'name' => 'Size',
+                'type' => 'single',
+                'values' => [
+                    ['label' => 'Regular', 'optionPrice' => 0],
+                    ['label' => 'Large', 'optionPrice' => 3],
+                ],
+            ],
+            [
+                'name' => 'Burger Addon',
+                'type' => 'multi',
+                'values' => [
+                    ['label' => 'Chicken Patty', 'optionPrice' => 4],
+                    ['label' => 'Beef Patty', 'optionPrice' => 4],
+                ],
+            ],
+        ];
+        $cartVariations = [
+            [
+                'name' => 'Size',
+                'values' => ['label' => ['Large']],
+            ],
+            [
+                'name' => 'Burger Addon',
+                'values' => ['label' => ['Chicken Patty', 'Beef Patty']],
+            ],
+        ];
+
+        $coreAmount = PromoMailPricing::computeMailCoreAmount(
+            $promoService,
+            $basePrice,
+            $productVariations,
+            $cartVariations,
+            ['discount_type' => 'amount', 'discount' => 0],
+            1
+        );
+
+        $this->assertEqualsWithDelta(16.95, $coreAmount, 0.01);
     }
 
     public function test_build_promotion_label_for_bogo(): void
@@ -171,7 +217,7 @@ class BingoBitesOrderMailHelperTest extends TestCase
         $banner->promotion_type = Banner::PROMOTION_TYPE_BOGO;
         $banner->reward_discount_value = 100;
         $banner->charge_paid_addons = true;
-        $banner->charge_reward_addons = true;
+        $banner->charge_reward_addons = false;
         $banner->setRelation('groupItems', new Collection());
 
         return $banner;

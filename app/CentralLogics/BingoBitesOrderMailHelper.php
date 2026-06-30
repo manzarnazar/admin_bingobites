@@ -236,15 +236,77 @@ class BingoBitesOrderMailHelper
         }
 
         if (!$banner) {
-            return array_map(
-                fn (array $item) => PromoMailPricing::finalizeNonPromoLineDisplay(
-                    array_diff_key($item, ['_detail' => true])
-                ),
-                $items
-            );
+            return self::applyNonPromoLinePricing($items);
         }
 
         return self::applyPromoLinePricing($items, $banner, $order);
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $items
+     * @return array<int, array<string, mixed>>
+     */
+    private static function applyNonPromoLinePricing(array $items): array
+    {
+        $promoService = app(PromoOrderService::class);
+        $pricedItems = [];
+
+        foreach ($items as $item) {
+            /** @var object $detail */
+            $detail = $item['_detail'];
+            unset($item['_detail']);
+
+            $productDetails = json_decode($detail->product_details, true) ?: [];
+            $basePrice = (float) ($productDetails['price'] ?? $detail->product?->price ?? 0);
+            $productVariations = self::resolveProductVariationsForDetail($detail, $productDetails);
+            $cartLine = PromoMailPricing::buildCartLineFromDetail($detail);
+            $discountData = [
+                'discount_type' => $productDetails['discount_type'] ?? 'percent',
+                'discount' => $productDetails['discount'] ?? 0,
+            ];
+
+            $coreAmount = PromoMailPricing::computeMailCoreAmount(
+                $promoService,
+                $basePrice,
+                $productVariations,
+                $cartLine['variations'],
+                $discountData,
+                (int) $detail->quantity
+            );
+
+            $lineNet = (float) $item['line_price'];
+            $explicitAddonCost = (float) $item['addon_cost'];
+            $variationAddonCost = 0.0;
+            if (empty(json_decode($detail->add_on_ids, true) ?? [])) {
+                $variationAddonCost = max(0, $lineNet - $coreAmount);
+            }
+
+            $pricedItems[] = array_merge($item, [
+                'core_amount' => $coreAmount,
+                'addon_cost' => $explicitAddonCost + $variationAddonCost,
+            ]);
+        }
+
+        return array_map(
+            fn (array $item) => PromoMailPricing::finalizeNonPromoLineDisplay($item),
+            $pricedItems
+        );
+    }
+
+    /**
+     * @param  array<string, mixed>  $productDetails
+     */
+    private static function resolveProductVariationsForDetail(object $detail, array $productDetails): array
+    {
+        if ($detail->product) {
+            return Helpers::resolveOrderProductVariations($detail->product, null);
+        }
+
+        $productVariationsRaw = $productDetails['variations'] ?? '[]';
+
+        return is_array($productVariationsRaw)
+            ? $productVariationsRaw
+            : (json_decode($productVariationsRaw, true) ?: []);
     }
 
     /**
@@ -268,10 +330,7 @@ class BingoBitesOrderMailHelper
 
             $productDetails = json_decode($detail->product_details, true) ?: [];
             $basePrice = (float) ($productDetails['price'] ?? $detail->product?->price ?? 0);
-            $productVariationsRaw = $productDetails['variations'] ?? '[]';
-            $productVariations = is_array($productVariationsRaw)
-                ? $productVariationsRaw
-                : (json_decode($productVariationsRaw, true) ?: []);
+            $productVariations = self::resolveProductVariationsForDetail($detail, $productDetails);
 
             $cartLine = PromoMailPricing::buildCartLineFromDetail($detail);
             $cartVariations = $cartLine['variations'];
@@ -295,7 +354,14 @@ class BingoBitesOrderMailHelper
                     $discountData,
                     $quantity
                 )
-                : $lineNet;
+                : PromoMailPricing::computeMailCoreAmount(
+                    $promoService,
+                    $basePrice,
+                    $productVariations,
+                    $cartVariations,
+                    $discountData,
+                    $quantity
+                );
 
             $variationAddonCost = 0.0;
             if (empty($addOnIds = json_decode($detail->add_on_ids, true) ?? [])) {

@@ -16,7 +16,7 @@
                     @if ($item['show_free_label'] ?? false)
                         <strong>FREE</strong>
                     @endif
-                    {{ \App\CentralLogics\Helpers::set_symbol($item['display_total'] ?? ($item['line_price'] + $item['addon_cost'])) }}
+                    {{ \App\CentralLogics\Helpers::set_symbol($item['display_total'] ?? 0) }}
                 </td>
             </tr>
         @endforeach
@@ -80,7 +80,7 @@
                         @if ($item['show_free_label'] ?? false)
                             <strong>{{ translate('FREE') }}</strong>
                         @endif
-                        {{ \App\CentralLogics\Helpers::set_symbol($item['display_total'] ?? ($item['line_price'] + $item['addon_cost'])) }}
+                        {{ \App\CentralLogics\Helpers::set_symbol($item['display_total'] ?? 0) }}
                     </td>
                 </tr>
             @endforeach
