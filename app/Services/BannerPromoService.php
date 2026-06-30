@@ -51,6 +51,7 @@ class BannerPromoService
             'description' => 'nullable|max:1000',
             'promotion_type' => 'required|in:bogo,percent_off,fixed_amount',
             'reward_discount_value' => 'required|numeric|min:0',
+            'minimum_spend' => 'required_if:promotion_type,fixed_amount|nullable|numeric|min:0.01',
             'charge_paid_addons' => 'nullable|boolean',
             'charge_reward_addons' => 'nullable|boolean',
             'order_type_mode' => 'required|in:any,custom',
@@ -88,6 +89,9 @@ class BannerPromoService
         $banner->description = $request->description;
         $banner->promotion_type = $request->promotion_type;
         $banner->reward_discount_value = $request->reward_discount_value;
+        $banner->minimum_spend = $request->promotion_type === Banner::PROMOTION_TYPE_FIXED_AMOUNT
+            ? $request->minimum_spend
+            : null;
         $banner->discount_cheapest_percent = null;
         $banner->discount_expensive_percent = null;
         $banner->charge_paid_addons = $request->boolean('charge_paid_addons');

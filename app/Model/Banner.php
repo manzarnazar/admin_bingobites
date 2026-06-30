@@ -16,6 +16,7 @@ class Banner extends Model
 
     protected $casts = [
         'reward_discount_value' => 'float',
+        'minimum_spend' => 'float',
         'discount_cheapest_percent' => 'float',
         'discount_expensive_percent' => 'float',
         'charge_paid_addons' => 'boolean',

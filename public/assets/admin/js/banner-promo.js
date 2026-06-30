@@ -87,6 +87,8 @@
         const label = $("#reward-discount-label");
         const groupTwoCard = $("#promo-group-2-card");
         const groupOneHelp = $("#group-1-help");
+        const minimumSpendField = $("#minimum-spend-field");
+        const minimumSpendInput = $("#minimum-spend-value");
 
         if (!rewardInput || !label) return;
 
@@ -100,6 +102,17 @@
         } else {
             rewardInput.removeAttribute("readonly");
             label.textContent = "Fixed Discount Amount";
+        }
+
+        if (minimumSpendField && minimumSpendInput) {
+            const showMinimumSpend = type === "fixed_amount";
+            minimumSpendField.classList.toggle("d-none", !showMinimumSpend);
+            if (showMinimumSpend) {
+                minimumSpendInput.setAttribute("required", "required");
+            } else {
+                minimumSpendInput.removeAttribute("required");
+                minimumSpendInput.value = "";
+            }
         }
 
         const optionalRewardGroupType =

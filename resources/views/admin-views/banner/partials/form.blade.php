@@ -120,6 +120,12 @@
                     <input type="number" step="0.01" min="0" name="reward_discount_value" id="reward-discount-value" class="form-control" value="{{ old('reward_discount_value', $banner?->reward_discount_value ?? 100) }}" required>
                 </div>
             </div>
+            <div class="col-md-6 col-lg-4" id="minimum-spend-field" @class(['d-none' => $promotionType !== 'fixed_amount'])>
+                <div class="form-group mb-0">
+                    <label class="input-label" for="minimum-spend-value">{{ translate('Minimum Spend') }}<span class="text-danger ml-1">*</span></label>
+                    <input type="number" step="0.01" min="0.01" name="minimum_spend" id="minimum-spend-value" class="form-control" value="{{ old('minimum_spend', $banner?->minimum_spend) }}" @if($promotionType === 'fixed_amount') required @endif>
+                </div>
+            </div>
         </div>
 
         <div class="row g-3 mt-1">

@@ -241,6 +241,20 @@ class PromoOrderService
         return min($rewardLineAmount, ($rewardLineAmount * $percent) / 100);
     }
 
+    public function meetsMinimumSpend(Banner $banner, float $cartSubtotal): bool
+    {
+        if ($banner->promotion_type !== Banner::PROMOTION_TYPE_FIXED_AMOUNT) {
+            return true;
+        }
+
+        $minimum = (float) ($banner->minimum_spend ?? 0);
+        if ($minimum <= 0) {
+            return true;
+        }
+
+        return $cartSubtotal >= $minimum;
+    }
+
     public function resolveRewardPercent(Banner $banner, Collection $groupTwoItems): float
     {
         if ($banner->promotion_type === Banner::PROMOTION_TYPE_FIXED_AMOUNT) {
@@ -459,6 +473,7 @@ class PromoOrderService
             'image' => $banner->image,
             'promotion_type' => $banner->promotion_type ?? Banner::PROMOTION_TYPE_BOGO,
             'reward_discount_value' => $banner->reward_discount_value,
+            'minimum_spend' => $banner->minimum_spend,
             'charge_paid_addons' => $banner->charge_paid_addons,
             'charge_reward_addons' => $banner->charge_reward_addons,
             'order_type_mode' => $banner->order_type_mode,

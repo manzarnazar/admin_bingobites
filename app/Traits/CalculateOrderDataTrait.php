@@ -95,6 +95,7 @@ trait CalculateOrderDataTrait
         $totalAddonTax = 0;
         $referralDiscountAmount = 0;
         $appliedCouponCode = null;
+        $promoCartSubtotal = 0;
 
         foreach ($cart as $cartItem) {
             $promotionRole = $cartItem['promotion_role'] ?? null;
@@ -287,9 +288,17 @@ trait CalculateOrderDataTrait
                 $promotionDiscountAmount += $linePromoDiscount;
             }
 
+            if ($isPromoLine) {
+                $promoCartSubtotal += ($price * $cartItem['quantity']) + $addonPrice;
+            }
+
             $totalAddonPrice += $addonPrice;
             $totalAddonTax += $addonTaxForThisItem;
 
+        }
+
+        if ($banner && !$promoService->meetsMinimumSpend($banner, $promoCartSubtotal)) {
+            $promotionDiscountAmount = 0;
         }
 
         $totalPriceForCalculation = (($totalProductPrice - $totalDiscountOnProduct - $promotionDiscountAmount) + $totalAddonPrice);

@@ -517,7 +517,7 @@ class OrderController extends Controller
                 }
             }
 
-            if (!empty($amountData['promotion_banner'])) {
+            if (!empty($amountData['promotion_banner']) && ($amountData['promotion_discount_amount'] ?? 0) > 0) {
                 app(PromoOrderService::class)->recordUsage(
                     banner: $amountData['promotion_banner'],
                     userId: $userId,
