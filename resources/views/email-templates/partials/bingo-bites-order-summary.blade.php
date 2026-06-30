@@ -78,7 +78,7 @@
                 <tr style="background-color:{{ $index % 2 === 0 ? '#FFFFFF' : '#FAFAFA' }};">
                     <td valign="top" style="font-size:11px;padding:11px 10px;border-bottom:1px solid #EEEEEE;color:{{ $black }};line-height:{{ $lh }};">{{ $item['quantity'] }}</td>
                     <td valign="top" style="font-size:11px;padding:11px 10px;border-bottom:1px solid #EEEEEE;font-weight:bold;color:{{ $black }};line-height:{{ $lh }};">
-                        <div>{{ $item['display_name'] ?? $item['name'] }}</div>
+                        <div>{{ $item['display_name'] ?? $item['name'] }}{{ $item['promo_label_suffix'] ?? '' }}</div>
                         @foreach ($item['addon_lines'] ?? [] as $addonLine)
                             <div style="font-size:10px;font-weight:normal;color:{{ $black }};margin-top:4px;line-height:{{ $lh }};">{{ $addonLine['display'] }}</div>
                         @endforeach

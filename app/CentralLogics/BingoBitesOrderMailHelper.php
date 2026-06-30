@@ -408,12 +408,13 @@ class BingoBitesOrderMailHelper
         $storedPromotionDiscount = (float) ($order->promotion_discount_amount ?? 0);
         $pricedItems = PromoMailPricing::allocatePromoLineDiscounts($pricedItems, $storedPromotionDiscount);
 
-        return array_map(function (array $item) {
+        return array_map(function (array $item) use ($banner) {
             $lineNet = (float) ($item['_line_net'] ?? $item['line_price']);
             unset($item['_line_net']);
 
             return PromoMailPricing::finalizePromoLineDisplay(
                 $item,
+                $banner,
                 $item['promotion_role'] ?? null,
                 $lineNet,
                 (float) $item['core_amount'],

@@ -140,6 +140,7 @@ class PromoMailPricing
      */
     public static function finalizePromoLineDisplay(
         array $item,
+        ?Banner $banner,
         ?string $promotionRole,
         float $lineNet,
         float $coreAmount,
@@ -148,15 +149,12 @@ class PromoMailPricing
     ): array {
         // PRICE column: core only (base + size/variation after promo). Add-ons live in footer row.
         $displayTotal = max(0, $coreAmount - $promoLineDiscount);
-        $showFreeLabel = $promotionRole === 'reward'
-            && $promoLineDiscount >= $coreAmount - 0.01
-            && $coreAmount > 0;
+        $isFullyDiscounted = $coreAmount > 0 && $promoLineDiscount >= $coreAmount - 0.01;
+        $showFreeLabel = $isFullyDiscounted;
 
-        $roleSuffix = match ($promotionRole) {
-            'paid' => ' (PAID ITEM)',
-            'reward' => ' (FREE ITEM)',
-            default => '',
-        };
+        $roleSuffix = $banner
+            ? self::buildPromoEmailSuffix($banner, $promotionRole, $coreAmount, $promoLineDiscount)
+            : '';
 
         return array_merge($item, [
             'promotion_role' => $promotionRole,
@@ -165,8 +163,49 @@ class PromoMailPricing
             'promo_line_discount' => $promoLineDiscount,
             'display_total' => $displayTotal,
             'show_free_label' => $showFreeLabel,
+            'promo_label_suffix' => $roleSuffix,
             'email_label' => $item['email_label'] . $roleSuffix,
         ]);
+    }
+
+    public static function buildPromoEmailSuffix(
+        Banner $banner,
+        ?string $promotionRole,
+        float $coreAmount,
+        float $promoLineDiscount
+    ): string {
+        if (!$promotionRole) {
+            return '';
+        }
+
+        $isFullyDiscounted = $coreAmount > 0 && $promoLineDiscount >= $coreAmount - 0.01;
+
+        if ($isFullyDiscounted) {
+            return ' (FREE ITEM)';
+        }
+
+        if ($promotionRole === 'paid' && $promoLineDiscount <= 0.01) {
+            return ' (PAID ITEM)';
+        }
+
+        if ($promoLineDiscount <= 0.01) {
+            return '';
+        }
+
+        if ($banner->promotion_type === Banner::PROMOTION_TYPE_FIXED_AMOUNT) {
+            $amount = Helpers::set_symbol((float) ($banner->reward_discount_value ?? 0));
+
+            return " ({$amount} - off)";
+        }
+
+        $percent = $banner->promotion_type === Banner::PROMOTION_TYPE_BOGO
+            ? 100.0
+            : (float) ($banner->reward_discount_value ?? 0);
+        $pctLabel = abs($percent - round($percent)) < 0.01
+            ? (string) (int) round($percent)
+            : rtrim(rtrim(number_format($percent, 2, '.', ''), '0'), '.');
+
+        return " ({$pctLabel}% - off)";
     }
 
     public static function computeMailCoreAmount(
@@ -328,7 +367,7 @@ class PromoMailPricing
         $groupName = trim((string) ($line['group_name'] ?? ''));
 
         if ($groupName !== '') {
-            return "{$qty} x {$groupName} ({$name} - {$priceText})";
+            return "{$qty} x ({$name} - {$priceText})";
         }
 
         return "{$qty} x {$name} - {$priceText}";

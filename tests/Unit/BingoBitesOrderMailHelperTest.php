@@ -61,6 +61,7 @@ class BingoBitesOrderMailHelperTest extends TestCase
 
         $paidLine = PromoMailPricing::finalizePromoLineDisplay(
             $lines[0],
+            $banner,
             'paid',
             $paidCore,
             $paidCore,
@@ -69,6 +70,7 @@ class BingoBitesOrderMailHelperTest extends TestCase
         );
         $rewardLine = PromoMailPricing::finalizePromoLineDisplay(
             $lines[1],
+            $banner,
             'reward',
             $rewardCore,
             $rewardCore,
@@ -112,6 +114,7 @@ class BingoBitesOrderMailHelperTest extends TestCase
     {
         $paidLine = PromoMailPricing::finalizePromoLineDisplay(
             ['email_label' => '1 x Classic Smash Burger'],
+            $this->makeBogoBanner(),
             'paid',
             32.95,
             13.95,
@@ -128,6 +131,7 @@ class BingoBitesOrderMailHelperTest extends TestCase
     {
         $rewardLine = PromoMailPricing::finalizePromoLineDisplay(
             ['email_label' => '1 x Classic Smash Burger'],
+            $this->makeBogoBanner(),
             'reward',
             13.95,
             13.95,
@@ -137,6 +141,46 @@ class BingoBitesOrderMailHelperTest extends TestCase
 
         $this->assertEqualsWithDelta(0.0, $rewardLine['display_total'], 0.01);
         $this->assertTrue($rewardLine['show_free_label']);
+    }
+
+    public function test_partial_percent_reward_shows_percent_suffix_not_free(): void
+    {
+        $banner = $this->makePercentOffBanner(25);
+
+        $line = PromoMailPricing::finalizePromoLineDisplay(
+            ['email_label' => '1 x Classic Smash Burger'],
+            $banner,
+            'reward',
+            13.95,
+            13.95,
+            0.0,
+            3.49
+        );
+
+        $this->assertEqualsWithDelta(10.46, $line['display_total'], 0.01);
+        $this->assertFalse($line['show_free_label']);
+        $this->assertStringContainsString('(25% - off)', $line['email_label']);
+        $this->assertStringNotContainsString('FREE ITEM', $line['email_label']);
+    }
+
+    public function test_build_promo_email_suffix_for_partial_percent(): void
+    {
+        $banner = $this->makePercentOffBanner(25);
+
+        $this->assertSame(
+            ' (25% - off)',
+            PromoMailPricing::buildPromoEmailSuffix($banner, 'reward', 13.95, 3.49)
+        );
+    }
+
+    public function test_build_promo_email_suffix_for_full_discount(): void
+    {
+        $banner = $this->makePercentOffBanner(100);
+
+        $this->assertSame(
+            ' (FREE ITEM)',
+            PromoMailPricing::buildPromoEmailSuffix($banner, 'reward', 13.95, 13.95)
+        );
     }
 
     public function test_compute_mail_core_amount_includes_size_variation_only(): void
@@ -194,7 +238,7 @@ class BingoBitesOrderMailHelperTest extends TestCase
             'unit_price' => 1.5,
         ], $formatCurrency);
 
-        $this->assertSame('1 x Burger Addon (Bacon Slice - $1.50)', $display);
+        $this->assertSame('1 x (Bacon Slice - $1.50)', $display);
     }
 
     public function test_build_mail_addon_lines_from_variations(): void
@@ -284,6 +328,16 @@ class BingoBitesOrderMailHelperTest extends TestCase
 
         $this->assertSame('Size', $cart[0]['name']);
         $this->assertSame(['Regular'], $cart[0]['values']['label']);
+    }
+
+    private function makePercentOffBanner(float $percent): Banner
+    {
+        $banner = new Banner();
+        $banner->promotion_type = Banner::PROMOTION_TYPE_PERCENT_OFF;
+        $banner->reward_discount_value = $percent;
+        $banner->setRelation('groupItems', new Collection());
+
+        return $banner;
     }
 
     private function makeBogoBanner(): Banner
