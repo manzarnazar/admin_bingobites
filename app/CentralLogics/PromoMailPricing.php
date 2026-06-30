@@ -156,16 +156,18 @@ class PromoMailPricing
             ? self::buildPromoEmailSuffix($banner, $promotionRole, $coreAmount, $promoLineDiscount)
             : '';
 
-        return array_merge($item, [
-            'promotion_role' => $promotionRole,
-            'core_amount' => $coreAmount,
-            'addon_cost' => $addonCost,
-            'promo_line_discount' => $promoLineDiscount,
-            'display_total' => $displayTotal,
-            'show_free_label' => $showFreeLabel,
-            'promo_label_suffix' => $roleSuffix,
-            'email_label' => $item['email_label'] . $roleSuffix,
-        ]);
+        return array_merge(
+            $item,
+            self::buildLinePriceDisplayFields($coreAmount, $displayTotal, $promoLineDiscount, 0.0, $showFreeLabel),
+            [
+                'promotion_role' => $promotionRole,
+                'core_amount' => $coreAmount,
+                'addon_cost' => $addonCost,
+                'promo_line_discount' => $promoLineDiscount,
+                'promo_label_suffix' => $roleSuffix,
+                'email_label' => $item['email_label'] . $roleSuffix,
+            ]
+        );
     }
 
     public static function buildPromoEmailSuffix(
@@ -230,14 +232,58 @@ class PromoMailPricing
     public static function finalizeNonPromoLineDisplay(array $item): array
     {
         $coreAmount = (float) ($item['core_amount'] ?? $item['line_price']);
+        $productDiscount = (float) ($item['product_discount'] ?? 0);
 
-        return array_merge($item, [
-            'promotion_role' => null,
-            'core_amount' => $coreAmount,
-            'promo_line_discount' => 0.0,
-            'display_total' => $coreAmount,
-            'show_free_label' => false,
-        ]);
+        return array_merge(
+            $item,
+            self::buildLinePriceDisplayFields($coreAmount, $coreAmount, 0.0, $productDiscount, false),
+            [
+                'promotion_role' => null,
+                'core_amount' => $coreAmount,
+                'promo_line_discount' => 0.0,
+            ]
+        );
+    }
+
+    public static function computeDisplayGst(float $totalPaid): float
+    {
+        return floor(max(0, $totalPaid) * 10) / 100;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public static function buildLinePriceDisplayFields(
+        float $coreAmount,
+        float $displayTotal,
+        float $promoLineDiscount,
+        float $productDiscount,
+        bool $showFreeLabel,
+        ?callable $formatCurrency = null
+    ): array {
+        $formatCurrency ??= function (float $amount): string {
+            if (defined('CACHE_BUSINESS_SETTINGS_TABLE')) {
+                return Helpers::set_symbol($amount);
+            }
+
+            return '$' . number_format($amount, 2, '.', '');
+        };
+
+        $displayOriginalTotal = $coreAmount;
+        if ($promoLineDiscount <= 0.01 && $productDiscount > 0.01) {
+            $displayOriginalTotal = $coreAmount + $productDiscount;
+        }
+
+        $showPriceStrikethrough = $displayOriginalTotal > $displayTotal + 0.01;
+
+        return [
+            'display_total' => $displayTotal,
+            'display_original_total' => $displayOriginalTotal,
+            'display_total_formatted' => $formatCurrency($displayTotal),
+            'display_original_total_formatted' => $formatCurrency($displayOriginalTotal),
+            'show_free_label' => $showFreeLabel,
+            'show_price_strikethrough' => $showPriceStrikethrough,
+        ];
     }
 
     public static function buildPromotionLabel(Banner $banner): string

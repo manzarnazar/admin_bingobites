@@ -81,6 +81,7 @@ class BingoBitesOrderMailHelperTest extends TestCase
         $this->assertEqualsWithDelta(13.95, $paidLine['display_total'], 0.01);
         $this->assertEqualsWithDelta(0.0, $rewardLine['display_total'], 0.01);
         $this->assertTrue($rewardLine['show_free_label']);
+        $this->assertTrue($rewardLine['show_price_strikethrough']);
         $this->assertStringContainsString('(PAID ITEM)', $paidLine['email_label']);
         $this->assertStringContainsString('(FREE ITEM)', $rewardLine['email_label']);
 
@@ -159,6 +160,8 @@ class BingoBitesOrderMailHelperTest extends TestCase
 
         $this->assertEqualsWithDelta(10.46, $line['display_total'], 0.01);
         $this->assertFalse($line['show_free_label']);
+        $this->assertTrue($line['show_price_strikethrough']);
+        $this->assertEqualsWithDelta(13.95, $line['display_original_total'], 0.01);
         $this->assertStringContainsString('(25% - off)', $line['email_label']);
         $this->assertStringNotContainsString('FREE ITEM', $line['email_label']);
     }
@@ -171,6 +174,28 @@ class BingoBitesOrderMailHelperTest extends TestCase
             ' (25% - off)',
             PromoMailPricing::buildPromoEmailSuffix($banner, 'reward', 13.95, 3.49)
         );
+    }
+
+    public function test_build_line_price_display_fields_shows_strikethrough_for_promo(): void
+    {
+        $formatCurrency = fn (float $amount) => '$' . number_format($amount, 2);
+        $fields = PromoMailPricing::buildLinePriceDisplayFields(
+            15.95,
+            3.99,
+            11.96,
+            0.0,
+            false,
+            $formatCurrency
+        );
+
+        $this->assertTrue($fields['show_price_strikethrough']);
+        $this->assertSame('$15.95', $fields['display_original_total_formatted']);
+        $this->assertSame('$3.99', $fields['display_total_formatted']);
+    }
+
+    public function test_compute_display_gst_is_ten_percent_of_total_paid(): void
+    {
+        $this->assertEqualsWithDelta(1.49, PromoMailPricing::computeDisplayGst(14.99), 0.01);
     }
 
     public function test_build_promo_email_suffix_for_full_discount(): void

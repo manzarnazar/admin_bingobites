@@ -429,7 +429,6 @@ class BingoBitesOrderMailHelper
         $itemsSubtotal = 0.0;
         $productDiscount = 0.0;
         $addonsCost = 0.0;
-        $taxAmount = 0.0;
 
         foreach ($lineItems as $item) {
             if ($banner) {
@@ -439,7 +438,6 @@ class BingoBitesOrderMailHelper
             }
             $productDiscount += $item['product_discount'];
             $addonsCost += $item['addon_cost'];
-            $taxAmount += $item['tax'];
         }
 
         $promotionDiscount = (float) ($order->promotion_discount_amount ?? 0);
@@ -453,7 +451,8 @@ class BingoBitesOrderMailHelper
             $deliveryFee = (float) ($order->delivery_charge ?? 0);
         }
 
-        $totalPaid = (float) $order->order_amount;
+        $totalPaid = max(0, (float) $order->order_amount);
+        $gstDisplay = PromoMailPricing::computeDisplayGst($totalPaid);
 
         $totals = [
             'subtotal' => $itemsSubtotal,
@@ -461,16 +460,16 @@ class BingoBitesOrderMailHelper
             'discount' => $combinedDiscount,
             'product_discount' => $productDiscount,
             'promotion_discount' => $promotionDiscount,
-            'gst' => $taxAmount,
+            'gst' => $gstDisplay,
             'delivery_fee' => $deliveryFee,
-            'total_paid' => max(0, $totalPaid),
+            'total_paid' => $totalPaid,
             'subtotal_formatted' => Helpers::set_symbol($itemsSubtotal),
-            'addons_formatted' => Helpers::set_symbol($addonsCost),
+            'addons_formatted' => '+' . Helpers::set_symbol($addonsCost),
             'discount_formatted' => Helpers::set_symbol($combinedDiscount),
             'promotion_discount_formatted' => Helpers::set_symbol($promotionDiscount),
-            'gst_formatted' => Helpers::set_symbol($taxAmount),
+            'gst_formatted' => Helpers::set_symbol($gstDisplay),
             'delivery_fee_formatted' => Helpers::set_symbol($deliveryFee),
-            'total_paid_formatted' => Helpers::set_symbol(max(0, $totalPaid)),
+            'total_paid_formatted' => Helpers::set_symbol($totalPaid),
         ];
 
         if ($banner && $promotionDiscount > 0) {

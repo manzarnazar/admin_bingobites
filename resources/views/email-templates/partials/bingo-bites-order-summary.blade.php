@@ -16,10 +16,7 @@
                     @endforeach
                 </td>
                 <td align="right" style="padding:10px 0;border-bottom:1px solid #EEEEEE;font-family:Arial,Helvetica,sans-serif;font-size:14px;color:{{ $black }};white-space:nowrap;line-height:{{ $lh }};">
-                    @if ($item['show_free_label'] ?? false)
-                        <strong>FREE</strong>
-                    @endif
-                    {{ \App\CentralLogics\Helpers::set_symbol($item['display_total'] ?? 0) }}
+                    @include('email-templates.partials.bingo-bites-line-price', ['item' => $item, 'mode' => 'email', 'font_size' => '14px', 'lh' => $lh])
                 </td>
             </tr>
         @endforeach
@@ -49,7 +46,7 @@
         </tr>
         @endif
         <tr>
-            <td align="right" style="padding:4px 0;font-family:Arial,Helvetica,sans-serif;font-size:14px;color:{{ $black }};line-height:{{ $lh }};">GST (Included)</td>
+            <td align="right" style="padding:4px 0;font-family:Arial,Helvetica,sans-serif;font-size:14px;color:{{ $black }};line-height:{{ $lh }};">GST (Included: 10%)</td>
             <td align="right" style="padding:4px 0 4px 16px;font-family:Arial,Helvetica,sans-serif;font-size:14px;color:{{ $black }};line-height:{{ $lh }};">{{ $totals['gst_formatted'] }}</td>
         </tr>
         @if ($totals['delivery_fee'] > 0)
@@ -85,10 +82,7 @@
                     </td>
                     <td valign="top" style="font-size:10px;padding:11px 10px;border-bottom:1px solid #EEEEEE;color:{{ $black }};line-height:{{ $lh }};">{{ $item['display_detail'] ?: '-' }}</td>
                     <td valign="top" align="right" style="font-size:11px;padding:11px 10px;border-bottom:1px solid #EEEEEE;color:{{ $black }};white-space:nowrap;line-height:{{ $lh }};">
-                        @if ($item['show_free_label'] ?? false)
-                            <strong>{{ translate('FREE') }}</strong>
-                        @endif
-                        {{ \App\CentralLogics\Helpers::set_symbol($item['display_total'] ?? 0) }}
+                        @include('email-templates.partials.bingo-bites-line-price', ['item' => $item, 'mode' => 'pdf', 'font_size' => '11px', 'lh' => $lh])
                     </td>
                 </tr>
             @endforeach
@@ -124,7 +118,7 @@
         @endif
         <tr>
             <td></td>
-            <td style="font-size:11px;color:{{ $black }};padding:5px 10px 5px 0;line-height:{{ $lh }};">GST (Included)</td>
+            <td style="font-size:11px;color:{{ $black }};padding:5px 10px 5px 0;line-height:{{ $lh }};">GST (Included: 10%)</td>
             <td align="right" style="font-size:11px;color:{{ $black }};padding:5px 0;line-height:{{ $lh }};">{{ $totals['gst_formatted'] }}</td>
         </tr>
         @if ($totals['delivery_fee'] > 0)
