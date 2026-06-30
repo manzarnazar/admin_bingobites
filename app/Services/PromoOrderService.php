@@ -473,7 +473,9 @@ class PromoOrderService
             'image' => $banner->image,
             'promotion_type' => $banner->promotion_type ?? Banner::PROMOTION_TYPE_BOGO,
             'reward_discount_value' => $banner->reward_discount_value,
-            'minimum_spend' => $banner->minimum_spend,
+            'minimum_spend' => $banner->promotion_type === Banner::PROMOTION_TYPE_FIXED_AMOUNT
+                ? $banner->minimum_spend
+                : null,
             'charge_paid_addons' => $banner->charge_paid_addons,
             'charge_reward_addons' => $banner->charge_reward_addons,
             'order_type_mode' => $banner->order_type_mode,

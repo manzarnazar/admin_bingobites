@@ -106,10 +106,14 @@
 
         if (minimumSpendField && minimumSpendInput) {
             const showMinimumSpend = type === "fixed_amount";
+            minimumSpendField.style.display = showMinimumSpend ? "" : "none";
             minimumSpendField.classList.toggle("d-none", !showMinimumSpend);
+            minimumSpendInput.disabled = !showMinimumSpend;
             if (showMinimumSpend) {
+                minimumSpendInput.setAttribute("name", "minimum_spend");
                 minimumSpendInput.setAttribute("required", "required");
             } else {
+                minimumSpendInput.removeAttribute("name");
                 minimumSpendInput.removeAttribute("required");
                 minimumSpendInput.value = "";
             }
@@ -415,6 +419,18 @@
                           "Please add at least one product to Group 1."
             );
             return;
+        }
+
+        if (promotionType === "fixed_amount") {
+            const minimumSpendInput = $("#minimum-spend-value");
+            const minimumSpend = minimumSpendInput ? parseFloat(minimumSpendInput.value) : NaN;
+            if (!minimumSpendInput || !Number.isFinite(minimumSpend) || minimumSpend <= 0) {
+                alert(
+                    window.translateMinimumSpendRequired ||
+                        "Please enter a minimum spend amount for Fixed Amount Off promotions."
+                );
+                return;
+            }
         }
 
         form.removeEventListener("submit", validatePromoForm);
