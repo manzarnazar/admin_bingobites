@@ -13,7 +13,10 @@
                     {{ $item['email_label'] }}
                 </td>
                 <td align="right" style="padding:10px 0;border-bottom:1px solid #EEEEEE;font-family:Arial,Helvetica,sans-serif;font-size:14px;color:{{ $black }};white-space:nowrap;line-height:{{ $lh }};">
-                    {{ \App\CentralLogics\Helpers::set_symbol($item['line_price'] + $item['addon_cost']) }}
+                    @if ($item['show_free_label'] ?? false)
+                        <strong>FREE</strong>
+                    @endif
+                    {{ \App\CentralLogics\Helpers::set_symbol($item['display_total'] ?? ($item['line_price'] + $item['addon_cost'])) }}
                 </td>
             </tr>
         @endforeach
@@ -28,6 +31,12 @@
         <tr>
             <td align="right" style="padding:4px 0;font-family:Arial,Helvetica,sans-serif;font-size:14px;color:{{ $black }};line-height:{{ $lh }};">Add-ons</td>
             <td align="right" style="padding:4px 0 4px 16px;font-family:Arial,Helvetica,sans-serif;font-size:14px;color:{{ $black }};line-height:{{ $lh }};">{{ $totals['addons_formatted'] }}</td>
+        </tr>
+        @endif
+        @if (($totals['promotion_discount'] ?? 0) > 0)
+        <tr>
+            <td align="right" style="padding:4px 0;font-family:Arial,Helvetica,sans-serif;font-size:14px;color:{{ $black }};line-height:{{ $lh }};">{{ $totals['promotion_label'] ?? 'Promotion' }}</td>
+            <td align="right" style="padding:4px 0 4px 16px;font-family:Arial,Helvetica,sans-serif;font-size:14px;color:{{ $brandRed }};line-height:{{ $lh }};">-{{ $totals['promotion_discount_formatted'] }}</td>
         </tr>
         @endif
         @if ($totals['discount'] > 0)
@@ -67,7 +76,12 @@
                     <td valign="top" style="font-size:11px;padding:11px 10px;border-bottom:1px solid #EEEEEE;color:{{ $black }};line-height:{{ $lh }};">{{ $item['quantity'] }}</td>
                     <td valign="top" style="font-size:11px;padding:11px 10px;border-bottom:1px solid #EEEEEE;font-weight:bold;color:{{ $black }};line-height:{{ $lh }};">{{ $item['display_name'] ?? $item['name'] }}</td>
                     <td valign="top" style="font-size:10px;padding:11px 10px;border-bottom:1px solid #EEEEEE;color:{{ $black }};line-height:{{ $lh }};">{{ $item['display_detail'] ?: '-' }}</td>
-                    <td valign="top" align="right" style="font-size:11px;padding:11px 10px;border-bottom:1px solid #EEEEEE;color:{{ $black }};white-space:nowrap;line-height:{{ $lh }};">{{ \App\CentralLogics\Helpers::set_symbol($item['line_price'] + $item['addon_cost']) }}</td>
+                    <td valign="top" align="right" style="font-size:11px;padding:11px 10px;border-bottom:1px solid #EEEEEE;color:{{ $black }};white-space:nowrap;line-height:{{ $lh }};">
+                        @if ($item['show_free_label'] ?? false)
+                            <strong>{{ translate('FREE') }}</strong>
+                        @endif
+                        {{ \App\CentralLogics\Helpers::set_symbol($item['display_total'] ?? ($item['line_price'] + $item['addon_cost'])) }}
+                    </td>
                 </tr>
             @endforeach
         </tbody>
@@ -84,6 +98,13 @@
             <td></td>
             <td style="font-size:11px;color:{{ $black }};padding:5px 10px 5px 0;line-height:{{ $lh }};">Add-ons</td>
             <td align="right" style="font-size:11px;color:{{ $black }};padding:5px 0;line-height:{{ $lh }};">{{ $totals['addons_formatted'] }}</td>
+        </tr>
+        @endif
+        @if (($totals['promotion_discount'] ?? 0) > 0)
+        <tr>
+            <td></td>
+            <td style="font-size:11px;color:{{ $black }};padding:5px 10px 5px 0;line-height:{{ $lh }};">{{ $totals['promotion_label'] ?? 'Promotion' }}</td>
+            <td align="right" style="font-size:11px;color:{{ $brandRed }};padding:5px 0;">-{{ $totals['promotion_discount_formatted'] }}</td>
         </tr>
         @endif
         @if ($totals['discount'] > 0)

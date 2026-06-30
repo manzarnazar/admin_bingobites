@@ -3,8 +3,10 @@
 namespace App\CentralLogics;
 
 use App\Model\AddOn;
+use App\Model\Banner;
 use App\Model\CustomerAddress;
 use App\Model\Order;
+use App\Services\PromoOrderService;
 use Carbon\Carbon;
 
 class BingoBitesOrderMailHelper
@@ -49,8 +51,13 @@ class BingoBitesOrderMailHelper
             ?? ($order->delivery_address_id ? CustomerAddress::find($order->delivery_address_id) : null);
         $order->address = $address;
 
-        $lineItems = self::buildLineItems($order);
-        $totals = self::buildTotals($order, $lineItems);
+        $banner = null;
+        if ($order->promotion_id) {
+            $banner = Banner::with('groupItems')->find($order->promotion_id);
+        }
+
+        $lineItems = self::buildLineItems($order, $banner);
+        $totals = self::buildTotals($order, $lineItems, $banner);
         $customer = self::buildCustomerBlock($order, $address);
         $location = self::buildLocationBlock($order, $address);
         $store = self::buildStoreBlock($order);
@@ -175,7 +182,7 @@ class BingoBitesOrderMailHelper
         ];
     }
 
-    private static function buildLineItems(Order $order): array
+    private static function buildLineItems(Order $order, ?Banner $banner): array
     {
         $items = [];
 
@@ -224,10 +231,116 @@ class BingoBitesOrderMailHelper
                 'addon_cost' => $lineAddonCost,
                 'tax' => $lineTax + $lineAddonTax,
                 'email_label' => (int) $detail->quantity . ' x ' . $name,
+                '_detail' => $detail,
             ];
         }
 
-        return $items;
+        if (!$banner) {
+            return array_map(
+                fn (array $item) => PromoMailPricing::finalizeNonPromoLineDisplay(
+                    array_diff_key($item, ['_detail' => true])
+                ),
+                $items
+            );
+        }
+
+        return self::applyPromoLinePricing($items, $banner, $order);
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $items
+     * @return array<int, array<string, mixed>>
+     */
+    private static function applyPromoLinePricing(array $items, Banner $banner, Order $order): array
+    {
+        $promoService = app(PromoOrderService::class);
+        $pricedItems = [];
+
+        foreach ($items as $item) {
+            /** @var object $detail */
+            $detail = $item['_detail'];
+            unset($item['_detail']);
+
+            $promotionRole = $detail->promotion_role ?? null;
+            $quantity = (int) $detail->quantity;
+            $lineNet = (float) $item['line_price'];
+            $explicitAddonCost = (float) $item['addon_cost'];
+
+            $productDetails = json_decode($detail->product_details, true) ?: [];
+            $basePrice = (float) ($productDetails['price'] ?? $detail->product?->price ?? 0);
+            $productVariationsRaw = $productDetails['variations'] ?? '[]';
+            $productVariations = is_array($productVariationsRaw)
+                ? $productVariationsRaw
+                : (json_decode($productVariationsRaw, true) ?: []);
+
+            $cartLine = PromoMailPricing::buildCartLineFromDetail($detail);
+            $cartVariations = $cartLine['variations'];
+
+            $roleDiscountData = PromoMailPricing::discountDataForRole($promotionRole);
+            $discountData = $roleDiscountData ?: [
+                'discount_type' => $productDetails['discount_type'] ?? 'percent',
+                'discount' => $productDetails['discount'] ?? 0,
+            ];
+
+            $presetVariations = $promotionRole
+                ? PromoMailPricing::resolvePresetVariations($banner, $promoService, $promotionRole, $cartLine)
+                : [];
+
+            $coreAmount = $promotionRole
+                ? $promoService->computePromoDiscountableLineAmount(
+                    $basePrice,
+                    $productVariations,
+                    $cartVariations,
+                    $presetVariations,
+                    $discountData,
+                    $quantity
+                )
+                : $lineNet;
+
+            $variationAddonCost = 0.0;
+            if (empty($addOnIds = json_decode($detail->add_on_ids, true) ?? [])) {
+                $variationAddonCost = max(0, $lineNet - $coreAmount);
+            }
+
+            $addonCost = $explicitAddonCost + $variationAddonCost;
+
+            if ($promotionRole && !$promoService->shouldChargeAddons($banner, $promotionRole)) {
+                $addonCost = $explicitAddonCost;
+            }
+
+            $rawPromoDiscount = PromoMailPricing::computeRawPromoLineDiscount(
+                $banner,
+                $promoService,
+                $promotionRole,
+                $coreAmount,
+                $cartLine
+            );
+
+            $pricedItems[] = array_merge($item, [
+                'addon_cost' => $addonCost,
+                'core_amount' => $coreAmount,
+                '_raw_promo_discount' => $rawPromoDiscount,
+                '_line_net' => $lineNet,
+                'promotion_role' => $promotionRole,
+            ]);
+        }
+
+        $storedPromotionDiscount = (float) ($order->promotion_discount_amount ?? 0);
+        $pricedItems = PromoMailPricing::allocatePromoLineDiscounts($pricedItems, $storedPromotionDiscount);
+
+        return array_map(function (array $item) {
+            $lineNet = (float) ($item['_line_net'] ?? $item['line_price']);
+            unset($item['_line_net']);
+
+            return PromoMailPricing::finalizePromoLineDisplay(
+                $item,
+                $item['promotion_role'] ?? null,
+                $lineNet,
+                (float) $item['core_amount'],
+                (float) $item['addon_cost'],
+                (float) ($item['promo_line_discount'] ?? 0)
+            );
+        }, $pricedItems);
     }
 
     private static function formatVariationText(?string $variationJson): string
@@ -267,22 +380,25 @@ class BingoBitesOrderMailHelper
         return implode(', ', array_filter($parts));
     }
 
-    private static function buildTotals(Order $order, array $lineItems): array
+    private static function buildTotals(Order $order, array $lineItems, ?Banner $banner): array
     {
         $itemsSubtotal = 0.0;
         $productDiscount = 0.0;
-        $netSubtotal = 0.0;
         $addonsCost = 0.0;
         $taxAmount = 0.0;
 
         foreach ($lineItems as $item) {
-            $itemsSubtotal += $item['gross_price'];
+            if ($banner) {
+                $itemsSubtotal += (float) ($item['core_amount'] ?? 0);
+            } else {
+                $itemsSubtotal += $item['gross_price'];
+            }
             $productDiscount += $item['product_discount'];
-            $netSubtotal += $item['line_price'];
             $addonsCost += $item['addon_cost'];
             $taxAmount += $item['tax'];
         }
 
+        $promotionDiscount = (float) ($order->promotion_discount_amount ?? 0);
         $couponDiscount = (float) ($order->coupon_discount_amount ?? 0);
         $extraDiscount = (float) ($order->extra_discount ?? 0);
         $referralDiscount = (float) ($order->referral_discount ?? 0);
@@ -293,21 +409,30 @@ class BingoBitesOrderMailHelper
             $deliveryFee = (float) ($order->delivery_charge ?? 0);
         }
 
-        $totalPaid = $netSubtotal + $addonsCost + $taxAmount + $deliveryFee - $couponDiscount - $extraDiscount - $referralDiscount;
+        $totalPaid = (float) $order->order_amount;
 
-        return [
+        $totals = [
             'subtotal' => $itemsSubtotal,
             'addons' => $addonsCost,
             'discount' => $combinedDiscount,
+            'product_discount' => $productDiscount,
+            'promotion_discount' => $promotionDiscount,
             'gst' => $taxAmount,
             'delivery_fee' => $deliveryFee,
             'total_paid' => max(0, $totalPaid),
             'subtotal_formatted' => Helpers::set_symbol($itemsSubtotal),
             'addons_formatted' => Helpers::set_symbol($addonsCost),
             'discount_formatted' => Helpers::set_symbol($combinedDiscount),
+            'promotion_discount_formatted' => Helpers::set_symbol($promotionDiscount),
             'gst_formatted' => Helpers::set_symbol($taxAmount),
             'delivery_fee_formatted' => Helpers::set_symbol($deliveryFee),
             'total_paid_formatted' => Helpers::set_symbol(max(0, $totalPaid)),
         ];
+
+        if ($banner && $promotionDiscount > 0) {
+            $totals['promotion_label'] = PromoMailPricing::buildPromotionLabel($banner);
+        }
+
+        return $totals;
     }
 }
