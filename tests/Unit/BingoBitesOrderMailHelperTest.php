@@ -108,6 +108,36 @@ class BingoBitesOrderMailHelperTest extends TestCase
         $this->assertEqualsWithDelta(13.95, $item['core_amount'], 0.01);
     }
 
+    public function test_paid_line_does_not_double_count_variation_addons_in_price(): void
+    {
+        $paidLine = PromoMailPricing::finalizePromoLineDisplay(
+            ['email_label' => '1 x Classic Smash Burger'],
+            'paid',
+            32.95,
+            13.95,
+            11.0,
+            0.0
+        );
+
+        $this->assertEqualsWithDelta(24.95, $paidLine['display_total'], 0.01);
+        $this->assertFalse($paidLine['show_free_label']);
+    }
+
+    public function test_reward_line_ignores_stored_addons_when_not_charged(): void
+    {
+        $rewardLine = PromoMailPricing::finalizePromoLineDisplay(
+            ['email_label' => '1 x Classic Smash Burger'],
+            'reward',
+            13.95,
+            13.95,
+            0.0,
+            13.95
+        );
+
+        $this->assertEqualsWithDelta(0.0, $rewardLine['display_total'], 0.01);
+        $this->assertTrue($rewardLine['show_free_label']);
+    }
+
     public function test_build_promotion_label_for_bogo(): void
     {
         $banner = $this->makeBogoBanner();

@@ -305,7 +305,7 @@ class BingoBitesOrderMailHelper
             $addonCost = $explicitAddonCost + $variationAddonCost;
 
             if ($promotionRole && !$promoService->shouldChargeAddons($banner, $promotionRole)) {
-                $addonCost = $explicitAddonCost;
+                $addonCost = 0.0;
             }
 
             $rawPromoDiscount = PromoMailPricing::computeRawPromoLineDiscount(

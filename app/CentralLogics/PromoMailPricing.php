@@ -146,7 +146,9 @@ class PromoMailPricing
         float $addonCost,
         float $promoLineDiscount
     ): array {
-        $displayCore = max(0, $lineNet - $promoLineDiscount);
+        // Use core_amount (not lineNet) so variation-priced add-ons baked into
+        // stored detail.price are not summed again with addon_cost.
+        $displayCore = max(0, $coreAmount - $promoLineDiscount);
         $displayTotal = max(0, $displayCore + $addonCost);
         $showFreeLabel = $promotionRole === 'reward'
             && $promoLineDiscount >= $coreAmount - 0.01
