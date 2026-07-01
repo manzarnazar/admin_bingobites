@@ -106,24 +106,6 @@
                                     </div>
                                 </div>
                             </div>
-                            <div class="row g-2 mt-2">
-                                <div class="col-12">
-                                    <div class="card border">
-                                        <div class="card-body py-3">
-                                            <div class="d-flex align-items-center justify-content-between gap-sm-3 gap-1 flex-sm-nowrap flex-wrap">
-                                                <div class="text-dark">{{ translate('turning visibility off will not show this coupon in the user app and website') }}</div>
-                                                <div class="d-flex gap-3 align-items-center">
-                                                    <h5 class="mb-0">{{translate('Visibility')}}</h5>
-                                                    <label class="switcher rounded-pill cmn_focus-shadow">
-                                                        <input class="switcher_input" type="checkbox" name="visibility" tabindex="11" {{ ($coupon['visibility'] ?? 1) == 1 ? 'checked' : '' }}>
-                                                        <span class="switcher_control"></span>
-                                                    </label>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
                             <div class="d-flex justify-content-end gap-3">
                                 <button type="reset" class="btn btn-secondary" tabindex="11">{{translate('reset')}}</button>
                                 <button type="submit" class="btn btn-primary" tabindex="12">{{translate('update')}}</button>
