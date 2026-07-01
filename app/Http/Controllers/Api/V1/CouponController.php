@@ -22,7 +22,7 @@ class CouponController extends Controller
      */
     public function list(Request $request): JsonResponse
     {
-        $couponQuery = $this->coupon->active();
+        $couponQuery = $this->coupon->active()->visible();
 
         if (!auth('api')->check()) {
             $couponQuery->default();

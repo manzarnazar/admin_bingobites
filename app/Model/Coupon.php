@@ -17,6 +17,7 @@ class Coupon extends Model
         'discount',
         'discount_type',
         'status',
+        'visibility',
         'coupon_type',
         'limit',
     ];
@@ -26,6 +27,7 @@ class Coupon extends Model
         'max_discount' => 'float',
         'discount' => 'float',
         'status' => 'integer',
+        'visibility' => 'integer',
         'start_date' => 'date',
         'expire_date' => 'date',
         'created_at' => 'datetime',
@@ -50,6 +52,11 @@ class Coupon extends Model
     public function scopeActive($query)
     {
         return $query->where(['status' => 1])->where('start_date', '<=', now()->format('Y-m-d'))->where('expire_date', '>=', now()->format('Y-m-d'));
+    }
+
+    public function scopeVisible($query)
+    {
+        return $query->where('visibility', 1);
     }
 
     public function scopeDefault($query)

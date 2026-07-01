@@ -1141,6 +1141,7 @@
   'tax_Rate' => 'Tax Rate',
   'Ex : $100' => 'Ex : $100',
   'turning visibility off will not show this product in the user app and website' => 'Turning visibility off will not show this product in the user app and website',
+  'turning visibility off will not show this coupon in the user app and website' => 'Turning visibility off will not show this coupon in the user app and website',
   'Visibility' => 'Visibility',
   'Availability' => 'Availability',
   'available_From' => 'Available From',

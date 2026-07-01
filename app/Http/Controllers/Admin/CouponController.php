@@ -80,6 +80,7 @@ class CouponController extends Controller
             'discount' => $request->discount,
             'discount_type' => $request->discount_type,
             'status' => 1,
+            'visibility' => $request->has('visibility') ? 1 : 0,
             'created_at' => now(),
             'updated_at' => now()
         ]);
@@ -128,6 +129,7 @@ class CouponController extends Controller
             'max_discount' => $request->max_discount != null ? $request->max_discount : 0,
             'discount' => $request->discount_type == 'amount' ? $request->discount : $request['discount'],
             'discount_type' => $request->discount_type,
+            'visibility' => $request->has('visibility') ? 1 : 0,
             'updated_at' => now()
         ]);
 
