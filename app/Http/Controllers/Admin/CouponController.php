@@ -155,6 +155,20 @@ class CouponController extends Controller
      * @param Request $request
      * @return RedirectResponse
      */
+    public function visibility(Request $request): RedirectResponse
+    {
+        $coupon = $this->coupon->find($request->id);
+        $coupon->visibility = $request->visibility;
+        $coupon->save();
+
+        Toastr::success(translate('Coupon visibility updated!'));
+        return back();
+    }
+
+    /**
+     * @param Request $request
+     * @return RedirectResponse
+     */
     public function delete(Request $request): RedirectResponse
     {
         $coupon = $this->coupon->find($request->id);

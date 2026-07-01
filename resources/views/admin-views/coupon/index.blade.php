@@ -154,6 +154,7 @@
                                         <th>{{translate('Coupon_Type')}}</th>
                                         <th>{{translate('duration')}}</th>
                                         <th>{{translate('status')}}</th>
+                                        <th>{{translate('Visibility')}}</th>
                                         <th class="text-center">{{translate('action')}}</th>
                                     </tr>
                                 </thead>
@@ -177,8 +178,16 @@
                                         <td><div class="text-muted">{{date('d M, Y', strtotime($coupon['start_date']))}} - {{date('d M, Y', strtotime($coupon['expire_date']))}}</div></td>
                                         <td>
                                             <label class="switcher">
-                                                <input id="{{$coupon['id']}}" class="switcher_input status-change" {{$coupon['status']==1? 'checked': '' }} type="checkbox"
+                                                <input id="status-{{$coupon['id']}}" class="switcher_input status-change" {{$coupon['status']==1? 'checked': '' }} type="checkbox"
                                                     data-url="{{route('admin.coupon.status',[$coupon['id'],1])}}"
+                                                >
+                                                <span class="switcher_control"></span>
+                                            </label>
+                                        </td>
+                                        <td>
+                                            <label class="switcher">
+                                                <input id="visibility-{{$coupon['id']}}" class="switcher_input visibility-change" {{($coupon['visibility'] ?? 1)==1? 'checked': '' }} type="checkbox"
+                                                    data-url="{{route('admin.coupon.visibility',[$coupon['id'],1])}}"
                                                 >
                                                 <span class="switcher_control"></span>
                                             </label>
@@ -274,6 +283,54 @@
                 complete: function () {
                     $('#loading').hide();
                 },
+            });
+        }
+
+        $(".visibility-change").change(function() {
+            visibility_change(this, $(this).data('url'));
+        });
+
+        function visibility_change(t, url) {
+            let checked = $(t).prop("checked");
+            let visibility = checked === true ? 1 : 0;
+
+            Swal.fire({
+                title: 'Are you sure?',
+                text: 'Want to change visibility',
+                type: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#FC6A57',
+                cancelButtonColor: 'default',
+                cancelButtonText: '{{translate("No")}}',
+                confirmButtonText: '{{translate("Yes")}}',
+                reverseButtons: true
+            }).then((result) => {
+                if (result.value) {
+                    $.ajaxSetup({
+                        headers: {
+                            'X-CSRF-TOKEN': $('meta[name="_token"]').attr('content')
+                        }
+                    });
+                    $.ajax({
+                        url: url,
+                        data: {
+                            visibility: visibility
+                        },
+                        success: function () {
+                            toastr.success("{{translate('Coupon visibility updated!')}}");
+                        },
+                        error: function () {
+                            toastr.error("{{translate('Status changed failed')}}");
+                        }
+                    });
+                } else if (result.dismiss) {
+                    if (visibility == 1) {
+                        $(t).prop('checked', false);
+                    } else if (visibility == 0) {
+                        $(t).prop('checked', true);
+                    }
+                    toastr.info("{{translate('Status has not changed')}}");
+                }
             });
         }
     </script>

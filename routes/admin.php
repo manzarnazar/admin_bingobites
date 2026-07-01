@@ -296,6 +296,7 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
             Route::get('update/{id}', [CouponController::class, 'edit'])->name('update');
             Route::post('update/{id}', [CouponController::class, 'update']);
             Route::get('status/{id}/{status}', [CouponController::class, 'status'])->name('status');
+            Route::get('visibility/{id}/{visibility}', [CouponController::class, 'visibility'])->name('visibility');
             Route::delete('delete/{id}', [CouponController::class, 'delete'])->name('delete');
             Route::get('generate-coupon-code', [CouponController::class, 'generateCouponCode'])->name('generate-coupon-code');
             Route::get('coupon-details', [CouponController::class, 'couponDetails'])->name('coupon-details');
