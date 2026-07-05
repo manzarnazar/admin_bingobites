@@ -19,12 +19,12 @@
         <div class="row g-3">
             <div class="col-lg-6">
                 <div class="form-group">
-                    <label class="input-label">{{ translate('title') }} ({{ translate('admin') }})<span class="text-danger ml-1">*</span></label>
-                    <input type="text" name="title" class="form-control" value="{{ old('title', $banner?->title ?? '') }}" required>
+                    <label class="input-label">{{ translate('title') }} ({{ translate('admin') }})</label>
+                    <input type="text" name="title" class="form-control" value="{{ old('title', $banner?->title ?? '') }}">
                 </div>
                 <div class="form-group">
-                    <label class="input-label">{{ translate('headline') }}<span class="text-danger ml-1">*</span></label>
-                    <input type="text" name="headline" class="form-control" value="{{ old('headline', $banner?->headline ?? '') }}" required>
+                    <label class="input-label">{{ translate('headline') }}</label>
+                    <input type="text" name="headline" class="form-control" value="{{ old('headline', $banner?->headline ?? '') }}">
                 </div>
                 <div class="form-group mb-0">
                     <label class="input-label">{{ translate('description') }}</label>

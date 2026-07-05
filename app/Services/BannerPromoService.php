@@ -47,8 +47,8 @@ class BannerPromoService
     public function validatePromoRequest(Request $request): array
     {
         $rules = [
-            'title' => 'required|max:255',
-            'headline' => 'required|max:255',
+            'title' => 'nullable|max:255',
+            'headline' => 'nullable|max:255',
             'description' => 'nullable|max:1000',
             'promotion_type' => 'required|in:bogo,percent_off,fixed_amount',
             'reward_discount_value' => 'required|numeric|min:0',
