@@ -3,6 +3,7 @@
 namespace App\Mail;
 
 use App\CentralLogics\BingoBitesOrderMailHelper;
+use App\CentralLogics\Helpers;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Queue\SerializesModels;
@@ -39,7 +40,7 @@ class OrderPlaced extends Mailable
         $mpdf->WriteHTML($pdfHtml);
         $pdfContent = $mpdf->Output('', 'S');
 
-        return $this->subject('Order Confirmed - Bingo Bites #' . $order->id)
+        $mailable = $this->subject('Order Confirmed - Bingo Bites #' . $order->id)
             ->view('email-templates.bingo-bites-order-placed', $mailData)
             ->withSymfonyMessage(function (Email $message) use ($mailData) {
                 $embeds = [
@@ -60,5 +61,17 @@ class OrderPlaced extends Mailable
             ->attachData($pdfContent, 'Invoice_Order_' . $order->id . '.pdf', [
                 'mime' => 'application/pdf',
             ]);
+
+        $companyEmail = Helpers::get_business_settings('email_address');
+        $customerEmail = $mailData['customer']['email'] ?? '';
+        if (
+            is_string($companyEmail)
+            && filter_var($companyEmail, FILTER_VALIDATE_EMAIL)
+            && strcasecmp($companyEmail, (string) $customerEmail) !== 0
+        ) {
+            $mailable->cc($companyEmail);
+        }
+
+        return $mailable;
     }
 }
